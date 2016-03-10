@@ -1,0 +1,3296 @@
+Sjasm Z80 Assembler v0.42b8 - www.xl2s.tk             [2014.11.01 - 17:00:33]
+
+main.asm
+Errors: 3
+
+       1   00:0000                      	output stardust64.rom
+       2   00:0000                      	
+       3   00:0000                      	defpage 0,0x0000,0x4000
+       4   00:0000                      	defpage 1,0x4000,0x4000
+       5   00:0000                      	defpage 2,0x8000,0x4000
+       6   00:0000                      	defpage 3,0x8000,0x4000
+       7   00:0000                      
+       8   00:0000                      ; ------------------------------
+       9   00:0000                      
+      10   00:0000                      	incdir	mus
+      11   00:0000                      	incdir	miz
+      12   00:0000                      
+      13   00:0000                      ; ------------------------------
+      14   00:0000                      	code page 0
+      15   00:0000                      
+      16   00:0000                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      17   00:0000                      	include macros.asm	
+       1.  00:0000                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       2.  00:0000                      ; vdp access
+       3.  00:0000                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       4.  00:0000                      
+       5.  00:0000  (00:F3DF)           _vdpReg 	equ 0xF3DF
+       6.  00:0000  (00:F3AE)           LINL40		equ 0xF3AE
+       7.  00:0000  (00:FC9E)           JIFFY:		equ 0xFC9E
+       8.  00:0000                      
+       9.  00:0000  (00:0024)           enaslt:          equ #0024
+      10.  00:0000  (00:FCC1)           exptbl:          equ #fcc1
+      11.  00:0000  (00:FCC5)           slttbl:          equ #fcc5
+      12.  00:0000                      
+      13.  00:0000                      ; ------------
+      14.  00:0000                      ; macro
+      15.  00:0000                      
+      16.  00:0000                      	macro _setVdp register,value	   ; macro definition
+      17.  00:0000                    < 	; IFIDNI value,a
+      18.  00:0000                    < 		ld	a,value
+      19.  00:0000                    < 	; ENDIF
+      20.  00:0000                    < 	out (0x99),a
+      21.  00:0000                    < 	ld	a,register + 0x80
+      22.  00:0000                    < 	out (0x99),a
+      23.  00:0000                    < 	endmacro
+      24.  00:0000                      
+      25.  00:0000                      	macro setVdp register,value		  ; macro definition
+      26.  00:0000                    < 	di
+      27.  00:0000                    < 	_setVdp register,value
+      28.  00:0000                    < 	ei
+      29.  00:0000                    < 	endmacro
+      30.  00:0000                      
+      31.  00:0000                      	macro _setvdpwvram value
+      32.  00:0000                    < 	if (value & 0xFF)
+      33.  00:0000                    < 		ld	a,value & 0xFF
+      34.  00:0000                    < 	else
+      35.  00:0000                    < 		xor a
+      36.  00:0000                    < 	endif
+      37.  00:0000                    < 	out (0x99),a
+      38.  00:0000                    < 	ld	a,0x40 + (value/256)
+      39.  00:0000                    < 	out (0x99),a
+      40.  00:0000                    < 	endmacro
+      41.  00:0000                      
+      42.  00:0000                      	macro setvdpwvram value
+      43.  00:0000                    < 	di
+      44.  00:0000                    < 	_setvdpwvram value
+      45.  00:0000                    < 	ei
+      46.  00:0000                    < 	endmacro
+      47.  00:0000                      
+      18   00:0000                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      19   00:0000                      	code
+      20   00:3152                      checkkbd:
+      21   00:3152  DB AA               	in	a,(0aah)
+      22   00:3154  E6 F0               	and 011110000B			; upper 4 bits contain info to preserve
+      23   00:3156  B3                  	or	e
+      24   00:3157  D3 AA               	out (0aah),a
+      25   00:3159  DB A9               	in	a,(0a9h)
+      26   00:315B  6F                  	ld	l,a
+      27   00:315C  C9                  	ret
+      28   00:315D                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      29   00:315D                      	code	
+      30   00:0024                      write_256:
+      31   00:0024  01 98 00            	ld	bc,0x0098
+      32   00:0027                      [8]	otir
+      32   00:0027  ED B3 ED B3 ED B3 ED B3 ED B3 ED B3 ED B3 ED B3 
+      33   00:0037  C9                  	ret
+      34   00:0038                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      35   00:0038                      	code		
+      36   00:313C                      enascr:
+      37   00:313C  3A E0 F3            	ld	   a,(_vdpReg + 1)
+      38   00:313F  F6 40               	or	   #40
+      39   00:3141  18 05               	jr	   1f
+      40   00:3143                      disscr:
+      41   00:3143  3A E0 F3            	ld	   a,(_vdpReg + 1)
+      42   00:3146  E6 BF               	and	   #bf
+      43   00:3148  D3 99               1:	out	   (#99),a
+      44   00:314A  32 E0 F3            	ld	   (_vdpReg + 1),a
+      45   00:314D  3E 81               	ld	   a,1 + 128
+      46   00:314F  D3 99               	out	   (#99),a
+      47   00:3151  C9                  	ret
+      48   00:3152                      
+      49   00:3152                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      50   00:3152                      	code	
+      51   00:315D                      setwrtvram:
+      52   00:315D  F3                  	di
+      53   00:315E  7B                  	ld	a,e
+      54   00:315F  D3 99               	out (0x99),a
+      55   00:3161  7A                  	ld	a,d
+      56   00:3162  F6 40               	or 0x40
+      57   00:3164  D3 99               	out (0x99),a
+      58   00:3166  C9                  	ret
+      59   00:3167                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      60   00:3167                      ; write 2K while ints are active from miz_buffer
+      61   00:3167                      ; in: de vram address, hl ram address
+      62   00:3167                      	code	
+      63   00:0000                      write_2k:
+      64   00:0000  EB                  	ex	de,hl
+      65   00:0001  CB F4               	set	6,h
+      66   00:0003  0E 99               	ld	c,0x99
+      67   00:0005  D5                  	push	de
+      68   00:0006  11 10 00            	ld	de,16
+      69   00:0009  D9                  	exx
+      70   00:000A  E1                  	pop		hl		; ld	hl,miz_buffer
+      71   00:000B  1E 7F               	ld 	e,127
+      72   00:000D  0E 98               	ld	c,0x98
+      73   00:000F  F3                  2:	di
+      74   00:0010  D9                  	exx
+      75   00:0011  ED 69               	out (c),l
+      76   00:0013  ED 61               	out (c),h	;c' = 0x99, HL' with write setup bit set
+      77   00:0015  19                  	add hl,de	;de' = 16
+      78   00:0016  D9                  	exx
+      79   00:0017  06 10               	ld b,16
+      80   00:0019  ED A3               1:	outi		;c = 0x98
+      81   00:001B  C2 19 00            	jp nz,1b
+      82   00:001E  FB                  	ei
+      83   00:001F  1D                  	dec e
+      84   00:0020  C2 0F 00            	jp nz,2b
+      85   00:0023  C9                  	ret
+      86   00:0024                      	code @ 0x0038
+      87   00:0038                      isr:
+      88   00:0038  E5                  	push   hl         
+      89   00:0039  D5                  	push   de         
+      90   00:003A  C5                  	push   bc         
+      91   00:003B  F5                  	push   af         
+      92   00:003C  FD E5               	push   iy         
+      93   00:003E  DD E5               	push   ix         
+      94   00:0040  DB 99               	in	a,(0x99)
+      95   00:0042  DD E1               	pop    ix         
+      96   00:0044  FD E1               	pop    iy         
+      97   00:0046  F1                  	pop    af         
+      98   00:0047  C1                  	pop    bc         
+      99   00:0048  D1                  	pop    de         
+     100   00:0049  E1                  	pop    hl         
+     101   00:004A  FB                  	ei
+     102   00:004B  C9                  	ret
+     103   00:004C                      	
+     104   00:004C                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     105   00:004C                      	include mizer.asm
+       1.  00:004C                      
+       2.  00:004C                      
+       3.  00:004C                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       4.  00:004C                      ; -------------------------------------------------------
+       5.  00:004C                      ; MSX-O-Mizer v1.5f datas depacker	  *ROM based version*
+       6.  00:004C                      ; Improved from Metalbrain's z80 version.
+       7.  00:004C                      ; -------------------------------------------------------
+       8.  00:004C                      ; source in hl
+       9.  00:004C                      ; dest in de
+      10.  00:004C                      
+      11.  00:004C                      ; 328 bytes which must be aligned on 8 bits boundary
+      12.  00:004C  (00:FE00)           mom_map_bits_rom	=		MSX_O_Mizer_buf
+      13.  00:004C                      ; 26 bytes located in ram
+      14.  00:004C  (00:FF48)           mom_offset_table	=		MSX_O_Mizer_buf + 328
+      15.  00:004C                      
+      16.  00:004C                      
+      17.  00:004C  D5                  mom_depack_rom:		push	de
+      18.  00:004D  01 48 FF            					ld		bc, mom_offset_table
+      19.  00:0050  C5                  					push	bc
+      20.  00:0051  50                  					ld		d,b
+      21.  00:0052  59                  					ld		e,c
+      22.  00:0053  01 1A 00            					ld		bc, 26
+      23.  00:0056  ED B0               					ldir
+      24.  00:0058  E5                  					push	hl
+      25.  00:0059  F1                  					pop		af
+      26.  00:005A  E1                  					pop		hl
+      27.  00:005B  F5                  					push	af
+      28.  00:005C  FD 21 F0 FE         					ld		iy, mom_map_bits_rom + 0xf0
+      29.  00:0060  06 34               					ld		b, 52
+      30.  00:0062  FD 7D               mom_init_bits_rom:	ld		a, iyl
+      31.  00:0064  E6 0F               					and		15
+      32.  00:0066  20 03               					jr		nz, mom_node_rom
+      33.  00:0068  11 01 00            					ld		de, 1
+      34.  00:006B  ED 67               mom_node_rom:		rrd
+      35.  00:006D  FD 77 00            					ld		(iy), a
+      36.  00:0070  FD 73 24            					ld		(iy + 36), e
+      37.  00:0073  FD 72 48            					ld		(iy + 72), d
+      38.  00:0076  FD 2C               					inc		iyl
+      39.  00:0078  3C                  					inc		a
+      40.  00:0079  E5                  					push	hl
+      41.  00:007A  21 00 00            					ld		hl, 0
+      42.  00:007D  37                  					scf
+      43.  00:007E  ED 6A               mom_set_bit_rom:	adc		hl, hl
+      44.  00:0080  3D                  					dec		a
+      45.  00:0081  20 FB               					jr		nz, mom_set_bit_rom
+      46.  00:0083  19                  					add		hl, de
+      47.  00:0084  EB                  					ex		de, hl
+      48.  00:0085  E1                  					pop		hl
+      49.  00:0086  CB 40               					bit		0, b
+      50.  00:0088  28 01               					jr		z, mom_wait_step_rom
+      51.  00:008A  23                  					inc		hl
+      52.  00:008B  10 D5               mom_wait_step_rom:	djnz	mom_init_bits_rom
+      53.  00:008D  E1                  					pop		hl
+      54.  00:008E  7E                  					ld		a, (hl)
+      55.  00:008F  23                  					inc		hl
+      56.  00:0090  DD 67               					ld		ixh, a
+      57.  00:0092  D1                  					pop		de
+      58.  00:0093  ED A0               mom_lit_copy_rom:	ldi
+      59.  00:0095  CD F2 00            mom_main_loop_rom:	call	mom_get_bit_rom
+      60.  00:0098  38 F9               					jr		c, mom_lit_copy_rom
+      61.  00:009A  0E EF               					ld		c, -17
+      62.  00:009C  CD F2 00            mom_get_index_rom:	call	mom_get_bit_rom
+      63.  00:009F  0C                  					inc		c
+      64.  00:00A0  30 FA               					jr		nc, mom_get_index_rom
+      65.  00:00A2  79                  					ld		a, c
+      66.  00:00A3  C8                  					ret		z
+      67.  00:00A4  D5                  					push	de
+      68.  00:00A5  CD D1 00            					call	mom_get_pair_rom
+      69.  00:00A8  C5                  					push	bc
+      70.  00:00A9  20 0C               					jr		nz, mom_out_range_rom
+      71.  00:00AB  11 20 02            					ld		de, 0x0220
+      72.  00:00AE  0D                  					dec		c
+      73.  00:00AF  28 09               					jr		z, mom_go_for_it_rom
+      74.  00:00B1  11 10 04            					ld		de, 0x0410
+      75.  00:00B4  0D                  					dec		c
+      76.  00:00B5  28 03               					jr		z, mom_go_for_it_rom
+      77.  00:00B7  11 00 04            mom_out_range_rom:	ld		de, 0x0400
+      78.  00:00BA  F1                  mom_go_for_it_rom:	pop		af
+      79.  00:00BB  08                  					ex		af, af'
+      80.  00:00BC  CD E3 00            					call	mom_get_bits_rom
+      81.  00:00BF  83                  					add		a, e
+      82.  00:00C0  CD D1 00            					call	mom_get_pair_rom
+      83.  00:00C3  D1                  					pop		de
+      84.  00:00C4  E5                  					push	hl
+      85.  00:00C5  62                  					ld		h, d
+      86.  00:00C6  6B                  					ld		l, e
+      87.  00:00C7  ED 42               					sbc		hl, bc
+      88.  00:00C9  08                  					ex		af, af'
+      89.  00:00CA  F5                  					push	af
+      90.  00:00CB  C1                  					pop		bc
+      91.  00:00CC  ED B0               					ldir
+      92.  00:00CE  E1                  					pop		hl
+      93.  00:00CF  18 C4               					jr		mom_main_loop_rom
+      94.  00:00D1  FD 6F               mom_get_pair_rom:	ld		iyl, a
+      95.  00:00D3  FD 56 00            					ld		d, (iy)
+      96.  00:00D6  CD E3 00            					call	mom_get_bits_rom
+      97.  00:00D9  FD 86 24            					add		(iy + 36)
+      98.  00:00DC  4F                  					ld		c, a
+      99.  00:00DD  78                  					ld		a, b
+     100.  00:00DE  FD 8E 48            					adc		(iy + 72)
+     101.  00:00E1  47                  					ld		b, a
+     102.  00:00E2  C9                  					ret
+     103.  00:00E3  01 00 00            mom_get_bits_rom:	ld		bc, 0
+     104.  00:00E6                      mom_getting_bits_rom:
+     105.  00:00E6  15                  					dec		d
+     106.  00:00E7  79                  					ld		a, c
+     107.  00:00E8  F8                  					ret		m
+     108.  00:00E9  CD F2 00            					call	mom_get_bit_rom
+     109.  00:00EC  CB 11               					rl		c
+     110.  00:00EE  CB 10               					rl		b
+     111.  00:00F0  18 F4               					jr		mom_getting_bits_rom
+     112.  00:00F2  DD 7C               mom_get_bit_rom:	ld		a, ixh
+     113.  00:00F4  87                  					add		a
+     114.  00:00F5  20 03               					jr		nz, mom_byte_done_rom
+     115.  00:00F7  7E                  					ld		a, (hl)
+     116.  00:00F8  23                  					inc		hl
+     117.  00:00F9  17                  					rla
+     118.  00:00FA  DD 67               mom_byte_done_rom:	ld		ixh, a
+     119.  00:00FC  C9                  					ret
+     106   00:00FD                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     107   00:00FD                      
+     108   00:00FD                      ; 110 BLOAD "data0.bin",S,&H0800:BLOAD "data1.bin",S,&H1000
+     109   00:00FD                      ; 120 BLOAD "data2.bin",S,&H1800:BLOAD "data3.bin",S,&H2000
+     110   00:00FD                      ; 130 BLOAD "data4.bin",S,&H2800:BLOAD "data5.bin",S,&H3000
+     111   00:00FD                      	incdir	basic
+     112   00:00FD                      
+     113   00:00FD  (07E7)              d0:		incbin data0.bin
+     114   00:08E4  (07E7)              d1:		incbin data1.bin	
+     115   00:10CB  (07E7)              d2:		incbin data2.bin
+     116   00:18B2  (07E7)              d3:		incbin data3.bin
+     117   00:2099  (07E7)              d4:		incbin data4.bin
+     118   00:2880  (07E7)              d5:		incbin data5.bin
+     119   00:3067                      vraminit:
+     120   00:3067  21 04 01            	ld	hl,d0+7
+     121   00:306A  11 00 08            	ld	de,0x0800
+     122   00:306D  CD 00 00            	call	write_2k
+     123   00:3070  21 EB 08            	ld	hl,d1+7
+     124   00:3073  11 00 10            	ld	de,0x1000
+     125   00:3076  CD 00 00            	call	write_2k
+     126   00:3079  21 D2 10            	ld	hl,d2+7
+     127   00:307C  11 00 18            	ld	de,0x1800
+     128   00:307F  CD 00 00            	call	write_2k
+     129   00:3082  21 B9 18            	ld	hl,d3+7
+     130   00:3085  11 00 20            	ld	de,0x2000
+     131   00:3088  CD 00 00            	call	write_2k
+     132   00:308B  21 A0 20            	ld	hl,d4+7
+     133   00:308E  11 00 28            	ld	de,0x2800
+     134   00:3091  CD 00 00            	call	write_2k
+     135   00:3094  21 87 28            	ld	hl,d5+7
+     136   00:3097  11 00 30            	ld	de,0x3000
+     137   00:309A  CD 00 00            	call	write_2k
+     138   00:309D  C9                  	ret
+     139   00:309E                      	
+     140   00:309E                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     141   00:309E                      joy_read:
+     142   00:309E  F3                  	di
+     143   00:309F  DD E5               	push	ix
+     144   00:30A1  3A D9 D5            	ld	a,(joystick)
+     145   00:30A4  32 DA D5            	ld	(old_joystick),a
+     146   00:30A7  CD BA 30            	call	.rd_joy
+     147   00:30AA  3A D9 D5            	ld	a,(joystick)
+     148   00:30AD  47                  	ld	b,a
+     149   00:30AE  3A DA D5            	ld	a,(old_joystick)
+     150   00:30B1  A8                  	xor	b
+     151   00:30B2  A0                  	and	b
+     152   00:30B3  32 DB D5            	ld	(chang_joystick),a
+     153   00:30B6  DD E1               	pop		ix
+     154   00:30B8  FB                  	ei
+     155   00:30B9  C9                  	ret
+     156   00:30BA                      ; PSG I/O port A (r#14) – read-only
+     157   00:30BA                      ; Bit	Description	Comment
+     158   00:30BA                      ; 0	Input joystick pin 1	(up)
+     159   00:30BA                      ; 1	Input joystick pin 2	(down)
+     160   00:30BA                      ; 2	Input joystick pin 3	(left)
+     161   00:30BA                      ; 3	Input joystick pin 4	(right)
+     162   00:30BA                      ; 4	Input joystick pin 6	(trigger A)
+     163   00:30BA                      ; 5	Input joystick pin 7	(trigger B)
+     164   00:30BA                      ; 6	Japanese keyboard layout bit	(1=JIS, 0=ANSI)
+     165   00:30BA                      ; 7	Cassette input signal	
+     166   00:30BA                      
+     167   00:30BA                      .rd_joy:
+     168   00:30BA  3E 0F               	ld	a,#0f
+     169   00:30BC  D3 A0               	out	(#a0),a
+     170   00:30BE  3E 8F               	ld	a,0x8F
+     171   00:30C0  D3 A1               	out	(#a1),a		; select port A
+     172   00:30C2  3E 0E               	ld	a,#0e
+     173   00:30C4  D3 A0               	out	(#a0),a
+     174   00:30C6  DB A2               	in	a,(#a2)
+     175   00:30C8                      .rd_key:	
+     176   00:30C8  DD 21 D9 D5         	ld	ix,joystick
+     177   00:30CC  DD 77 00            	ld	(ix),a
+     178   00:30CF                      	
+     179   00:30CF  1E 08               	ld  e,8
+     180   00:30D1  CD 52 31                call    checkkbd
+     181   00:30D4  CB 47               	bit	0,a				; space
+     182   00:30D6  20 04               	jr	nz,1f
+     183   00:30D8  DD CB 00 A6         	res	4,(ix)			; (trigger A)
+     184   00:30DC                      1:
+     185   00:30DC  CB 7F               	bit	7,a				; RIGHT
+     186   00:30DE  20 04               	jr	nz,1f
+     187   00:30E0  DD CB 00 9E         	res	3,(ix)			; (right joy)
+     188   00:30E4                      1:
+     189   00:30E4  CB 77               	bit	6,a				; DOWN
+     190   00:30E6  20 04               	jr	nz,1f
+     191   00:30E8  DD CB 00 8E         	res	1,(ix)			; (down joy)
+     192   00:30EC                      1:
+     193   00:30EC  CB 6F               	bit	5,a				; UP
+     194   00:30EE  20 04               	jr	nz,1f
+     195   00:30F0  DD CB 00 86         	res	0,(ix)			; (up joy)
+     196   00:30F4                      1:
+     197   00:30F4  CB 67               	bit	4,a				; LEFT
+     198   00:30F6  20 04               	jr	nz,1f
+     199   00:30F8  DD CB 00 96         	res	2,(ix)			; (left joy)
+     200   00:30FC                      1:
+     201   00:30FC  1E 05               	ld  e,5
+     202   00:30FE  CD 52 31                call    checkkbd
+     203   00:3101  CB 6F               	bit	5,a				; X
+     204   00:3103  20 04               	jr	nz,1f
+     205   00:3105  DD CB 00 AE         	res	5,(ix)			; (trigger B)
+     206   00:3109                      1:
+     207   00:3109  CB 7F               	bit	7,a				; Z
+     208   00:310B  20 04               	jr	nz,1f
+     209   00:310D  DD CB 00 A6         	res	4,(ix)			; (trigger A)
+     210   00:3111                      1:
+     211   00:3111  C9                  	ret
+     212   00:3112                      
+     213   00:3112                      	
+     214   00:3112                      	
+     215   00:3112                      ;    5   |    Z     Y     X     W     V     U     T     S
+     216   00:3112                      ;    6   |   F3    F2    F1   CODE   CAP  GRAPH CTRL  SHIFT
+     217   00:3112                      ;    7   |   RET   SEL   BS   STOP   TAB   ESC   F5    F4
+     218   00:3112                      ;    8   |  RIGHT DOWN   UP   LEFT   DEL   INS  HOME  SPACE
+     219   00:3112                      .z_or_space:
+     220   00:3112  3A D9 D5            	ld	a,(joystick)
+     221   00:3115  E6 10               	and	16
+     222   00:3117  C9                  	ret
+     223   00:3118                      .x_and_up:
+     224   00:3118  3A D9 D5            	ld	a,(joystick)
+     225   00:311B  E6 20               	and	32
+     226   00:311D  C0                  	ret	nz
+     227   00:311E                      .up:
+     228   00:311E  3A D9 D5            	ld	a,(joystick)
+     229   00:3121  E6 01               	and	1
+     230   00:3123  C9                  	ret
+     231   00:3124                      .x_and_dwn:
+     232   00:3124  3A D9 D5            	ld	a,(joystick)
+     233   00:3127  E6 20               	and	32
+     234   00:3129  C0                  	ret	nz
+     235   00:312A                      .dwn:
+     236   00:312A  3A D9 D5            	ld	a,(joystick)
+     237   00:312D  E6 02               	and	2
+     238   00:312F  C9                  	ret
+     239   00:3130                      .left:
+     240   00:3130  3A D9 D5            	ld	a,(joystick)
+     241   00:3133  E6 04               	and	4
+     242   00:3135  C9                  	ret
+     243   00:3136                      .right:
+     244   00:3136  3A D9 D5            	ld	a,(joystick)
+     245   00:3139  E6 08               	and	8
+     246   00:313B  C9                  	ret
+     247   00:313C                      	
+     248   00:313C                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     249   00:313C                      	
+     250   00:313C  (00:0002)           xstep equ 2
+     251   00:313C                      	
+     252   00:313C                      	code @	4000h,page 1
+     253   01:4000                      rom_header:
+     254   01:4000  41 42               	db "AB"		; rom header
+     255   01:4002  AF 4D                   dw initmain
+     256   01:4004  00 (12)                 ds    12
+     257   01:4010                          dz 'TRI005'
+     257   01:4010  54 52 49 30 30 35 00 
+     258   01:4017                      
+     259   01:4017                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     260   01:4017                      	include rominit64.asm	
+       1.  01:4017                      
+       2.  01:4017                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       3.  01:4017                      ; set pages and subslot
+       4.  01:4017                      ;
+       5.  01:4017                      
+       6.  01:4017                      
+       7.  01:4017  (01:0024)           ENASLT:			equ		024h
+       8.  01:4017  (01:0138)           RSLREG:			equ		0138h
+       9.  01:4017  (01:FCC1)           EXPTBL:			equ		0FCC1h	; Bios Slot / Expansion Slot
+      10.  01:4017                      
+      11.  01:4017                      
+      12.  01:4017                      ; ----------------------------
+      13.  01:4017                      ; pre-set main slot for page 3
+      14.  01:4017                      ; and set sub-slot for page 3
+      15.  01:4017                      ; ----------------------------
+      16.  01:4017                      	macro	mainslot_setup n
+      17.  01:4017                    < 	and		3
+      18.  01:4017                    < [2]	rrca
+      19.  01:4017                    < 	and		0xC0
+      20.  01:4017                    < 	ld		c,a
+      21.  01:4017                    < 	ld		a,d
+      22.  01:4017                    < 	and		0x3F
+      23.  01:4017                    < 	or		c
+      24.  01:4017                    < 	ld		c,a					; Primary slot value with main slot in page 3
+      25.  01:4017                    < 
+      26.  01:4017                    < 	ld		a,b
+      27.  01:4017                    < 	and		0x0C
+      28.  01:4017                    < [2]	rrca
+      29.  01:4017                    < 	and		3
+      30.  01:4017                    < 	ld		b,a					; B = Expanded slot in page 3
+      31.  01:4017                    < 	ld		a,c
+      32.  01:4017                    < 	out		(0A8h),a			; Slot : Main Slot, xx, xx, Main slot
+      33.  01:4017                    < 	ld		a,(0FFFFh)
+      34.  01:4017                    < 	cpl
+      35.  01:4017                    < 	if (n<=4)
+      36.  01:4017                    < [n]	RLCA
+      37.  01:4017                    < 	else
+      38.  01:4017                    < [8-n] RRCA	
+      39.  01:4017                    < 	endif
+      40.  01:4017                    < 	and		0xFC
+      41.  01:4017                    < 	or		b
+      42.  01:4017                    < 	if (n<=4)
+      43.  01:4017                    < [n]	RRCA
+      44.  01:4017                    < 	else
+      45.  01:4017                    < [8-n] RLCA
+      46.  01:4017                    < 	endif
+      47.  01:4017                    < 	ld		(0FFFFh),a		; Expanded slot selected
+      48.  01:4017                    < 	ld		b,a				; save for later	
+      49.  01:4017                    < 	endmacro
+      50.  01:4017                      		
+      51.  01:4017                      
+      52.  01:4017                      ; ------------------------------
+      53.  01:4017                      ; SEARCH_SLOT
+      54.  01:4017                      ; look for the slot of our rom
+      55.  01:4017                      ; active in page 1
+      56.  01:4017                      ; ------------------------------
+      57.  01:4017                      
+      58.  01:4017                      search_slot:
+      59.  01:4017  CD 38 01            	call	RSLREG
+      60.  01:401A  0F 0F               [2]	rrca
+      61.  01:401C  E6 03               	and		3
+      62.  01:401E  4F                  	ld		c,a
+      63.  01:401F  06 00               	ld		b,0
+      64.  01:4021  21 C1 FC            	ld		hl,EXPTBL
+      65.  01:4024  09                  	add		hl,bc
+      66.  01:4025  7E                  	ld		a,(hl)
+      67.  01:4026  E6 80               	and		080h
+      68.  01:4028  B1                  	or		c
+      69.  01:4029  4F                  	ld		c,a
+      70.  01:402A  23 23 23 23         [4]	inc		hl
+      71.  01:402E  7E                  	ld		a,(hl)
+      72.  01:402F  E6 0C               	and		0Ch
+      73.  01:4031  B1                  	or		c
+      74.  01:4032  32 C5 FF            	ld		(slotvar),a
+      75.  01:4035  C9                  	ret
+      76.  01:4036                      	
+      77.  01:4036                      ; ------------------------------
+      78.  01:4036                      ; look for the slot of ram
+      79.  01:4036                      ; active in page 3
+      80.  01:4036                      ; ------------------------------
+      81.  01:4036                      
+      82.  01:4036                      search_slotram:
+      83.  01:4036  F3                  	di
+      84.  01:4037  CD 38 01            	call	RSLREG
+      85.  01:403A  07 07               [2]	rlca
+      86.  01:403C  E6 03               	and		3
+      87.  01:403E  4F                  	ld		c,a
+      88.  01:403F  06 00               	ld		b,0
+      89.  01:4041  21 C1 FC            	ld		hl,EXPTBL
+      90.  01:4044  09                  	add		hl,bc
+      91.  01:4045  7E                  	ld		a,(hl)
+      92.  01:4046  E6 80               	and		080h
+      93.  01:4048  28 0D               	jr		z,search_slotram0
+      94.  01:404A  B1                  	or		c
+      95.  01:404B  4F                  	ld		c,a
+      96.  01:404C  23 23 23 23         [4]	inc		hl
+      97.  01:4050  7E                  	ld		a,(hl)
+      98.  01:4051  07 07 07 07         [4]	rlca
+      99.  01:4055  E6 0C               	and		0Ch
+     100.  01:4057                      search_slotram0:
+     101.  01:4057  B1                  	or		c
+     102.  01:4058  32 C6 FF            	ld		(slotram),a
+     103.  01:405B  C9                  	ret
+     104.  01:405C                      	
+     105.  01:405C                      ; ------------------------------
+     106.  01:405C                      ; SETROMPAGE0
+     107.  01:405C                      ; Set the chart in
+     108.  01:405C                      ; Page 0
+     109.  01:405C                      ; -----------------------------
+     110.  01:405C                      
+     111.  01:405C                      setrompage0:
+     112.  01:405C  3A C5 FF            	ld		a,(slotvar)
+     113.  01:405F  C3 7D 40            	jp		setslotpage0
+     114.  01:4062                      
+     115.  01:4062                      setrompage2:
+     116.  01:4062  3A C5 FF            	ld		a,(slotvar)
+     117.  01:4065  C3 F3 40            	jp		setslotpage2
+     118.  01:4068                      
+     119.  01:4068                      setrampage2:
+     120.  01:4068  3A C6 FF            	ld		a,(slotram)
+     121.  01:406B  C3 F3 40            	jp		setslotpage2
+     122.  01:406E                      	
+     123.  01:406E                      setrompage3:
+     124.  01:406E  3A C5 FF            	ld		a,(slotvar)
+     125.  01:4071  C3 3A 41            	jp		setslotpage3
+     126.  01:4074                      
+     127.  01:4074                      setrampage3:
+     128.  01:4074  3A C6 FF            	ld		a,(slotram)
+     129.  01:4077  C3 3A 41            	jp		setslotpage3
+     130.  01:407A                      	
+     131.  01:407A                      ; ------------------------------
+     132.  01:407A                      ; RECBIOS
+     133.  01:407A                      ; set the bios ROM
+     134.  01:407A                      ; -------------------------------
+     135.  01:407A                      recbios:
+     136.  01:407A  3A C1 FC            	ld		a,(EXPTBL)
+     137.  01:407D                      
+     138.  01:407D                      ; ---------------------------
+     139.  01:407D                      ; SETSLOTPAGE0
+     140.  01:407D                      ; Set the slot passed in A
+     141.  01:407D                      ; at page 0 in the Z80 address space
+     142.  01:407D                      ; A: Format FxxxSSPP
+     143.  01:407D                      ; ----------------------------
+     144.  01:407D                      
+     145.  01:407D                      setslotpage0:
+     146.  01:407D  F3                  	di
+     147.  01:407E  47                  	ld		b,a					; B = Slot param in FxxxSSPP format
+     148.  01:407F  DB A8               	in		a,(0A8h)
+     149.  01:4081  E6 FC               	and		0xFC
+     150.  01:4083  57                  	ld		d,a					; D = Primary slot value
+     151.  01:4084  78                  	ld		a,b
+     152.  01:4085  E6 03               	and		3
+     153.  01:4087  B2                  	or		d
+     154.  01:4088  57                  	ld		d,a		; D = Final Value for primary slot
+     155.  01:4089  78                  	ld		a,b		; Check if expanded
+     156.  01:408A  CB 7F               	bit		7,a
+     157.  01:408C  28 22               	jr		z,1f	; Not Expanded
+     158.  01:408E                      	mainslot_setup	0
+     158.  01:408E  E6 03             >  and  3
+     158.  01:4090  0F 0F             > [2] rrca
+     158.  01:4092  E6 C0             >  and  0xC0
+     158.  01:4094  4F                >  ld  c,a
+     158.  01:4095  7A                >  ld  a,d
+     158.  01:4096  E6 3F             >  and  0x3F
+     158.  01:4098  B1                >  or  c
+     158.  01:4099  4F                >  ld  c,a
+     158.  01:409A                    > 
+     158.  01:409A  78                >  ld  a,b
+     158.  01:409B  E6 0C             >  and  0x0C
+     158.  01:409D  0F 0F             > [2] rrca
+     158.  01:409F  E6 03             >  and  3
+     158.  01:40A1  47                >  ld  b,a
+     158.  01:40A2  79                >  ld  a,c
+     158.  01:40A3  D3 A8             >  out  (0A8h),a
+     158.  01:40A5  3A FF FF          >  ld  a,(0FFFFh)
+     158.  01:40A8  2F                >  cpl
+     158.  01:40A9                    >  if (n<=4)
+     158.  01:40A9                    > [n] RLCA
+     158.  01:40A9                    >  else
+     158.  01:40A9                    ~ [8-n] RRCA
+     158.  01:40A9                    ~  endif
+     158.  01:40A9  E6 FC             >  and  0xFC
+     158.  01:40AB  B0                >  or  b
+     158.  01:40AC                    >  if (n<=4)
+     158.  01:40AC                    > [n] RRCA
+     158.  01:40AC                    >  else
+     158.  01:40AC                    ~ [8-n] RLCA
+     158.  01:40AC                    ~  endif
+     158.  01:40AC  32 FF FF          >  ld  (0FFFFh),a
+     158.  01:40AF  47                >  ld  b,a
+     159.  01:40B0  7A                  1:	ld		a,d				; A = Final value
+     160.  01:40B1  D3 A8               	out		(0A8h),a		; Slot Final. Ram, rom c, rom c, Main
+     161.  01:40B3  C9                  	ret
+     162.  01:40B4                      
+     163.  01:40B4                      ; ---------------------------
+     164.  01:40B4                      ; SETSLOTPAGE1
+     165.  01:40B4                      ; Set the slot passed in A
+     166.  01:40B4                      ; at page 1 in the Z80 address space
+     167.  01:40B4                      ; A: Format FxxxSSPP
+     168.  01:40B4                      ; ----------------------------
+     169.  01:40B4                      
+     170.  01:40B4                      setslotpage1:
+     171.  01:40B4  F3                  	di
+     172.  01:40B5  47                  	ld		b,a					; B = Slot param in FxxxSSPP format
+     173.  01:40B6  DB A8               	in		a,(0A8h)
+     174.  01:40B8  0F 0F               [2]	RRCA
+     175.  01:40BA  E6 FC               	and		0xFC
+     176.  01:40BC  57                  	ld		d,a					; D = Primary slot value
+     177.  01:40BD  78                  	ld		a,b
+     178.  01:40BE  E6 03               	and		3
+     179.  01:40C0  B2                  	or		d
+     180.  01:40C1  07 07               [2]	RLCA
+     181.  01:40C3  57                  	ld		d,a		; D = Final Value for primary slot
+     182.  01:40C4  78                  	ld		a,b		; Check if expanded
+     183.  01:40C5  CB 7F               	bit		7,a
+     184.  01:40C7  28 26               	jr		z,1f	; Not Expanded
+     185.  01:40C9                      	mainslot_setup	6
+     185.  01:40C9  E6 03             >  and  3
+     185.  01:40CB  0F 0F             > [2] rrca
+     185.  01:40CD  E6 C0             >  and  0xC0
+     185.  01:40CF  4F                >  ld  c,a
+     185.  01:40D0  7A                >  ld  a,d
+     185.  01:40D1  E6 3F             >  and  0x3F
+     185.  01:40D3  B1                >  or  c
+     185.  01:40D4  4F                >  ld  c,a
+     185.  01:40D5                    > 
+     185.  01:40D5  78                >  ld  a,b
+     185.  01:40D6  E6 0C             >  and  0x0C
+     185.  01:40D8  0F 0F             > [2] rrca
+     185.  01:40DA  E6 03             >  and  3
+     185.  01:40DC  47                >  ld  b,a
+     185.  01:40DD  79                >  ld  a,c
+     185.  01:40DE  D3 A8             >  out  (0A8h),a
+     185.  01:40E0  3A FF FF          >  ld  a,(0FFFFh)
+     185.  01:40E3  2F                >  cpl
+     185.  01:40E4                    >  if (n<=4)
+     185.  01:40E4                    ~ [n] RLCA
+     185.  01:40E4                    ~  else
+     185.  01:40E4  0F 0F             > [8-n] RRCA
+     185.  01:40E6                    >  endif
+     185.  01:40E6  E6 FC             >  and  0xFC
+     185.  01:40E8  B0                >  or  b
+     185.  01:40E9                    >  if (n<=4)
+     185.  01:40E9                    ~ [n] RRCA
+     185.  01:40E9                    ~  else
+     185.  01:40E9  07 07             > [8-n] RLCA
+     185.  01:40EB                    >  endif
+     185.  01:40EB  32 FF FF          >  ld  (0FFFFh),a
+     185.  01:40EE  47                >  ld  b,a
+     186.  01:40EF  7A                  1:	ld		a,d				; A = Final value
+     187.  01:40F0  D3 A8               	out		(0A8h),a		; Slot Final. Ram, rom c, rom c, Main
+     188.  01:40F2  C9                  	ret
+     189.  01:40F3                      	
+     190.  01:40F3                      
+     191.  01:40F3                      ; ---------------------------
+     192.  01:40F3                      ; SETSLOTPAGE2
+     193.  01:40F3                      ; Set the slot passed in A
+     194.  01:40F3                      ; at page 2 in the Z80 address space
+     195.  01:40F3                      ; A: Format FxxxSSPP
+     196.  01:40F3                      ; ----------------------------
+     197.  01:40F3                      
+     198.  01:40F3                      setslotpage2:
+     199.  01:40F3  F3                  	di
+     200.  01:40F4  47                  	ld		b,a					; B = Slot param in FxxxSSPP format
+     201.  01:40F5  DB A8               	in		a,(0A8h)
+     202.  01:40F7  07 07 07 07         [4]	RLCA
+     203.  01:40FB  E6 FC               	and		0xFC
+     204.  01:40FD  57                  	ld		d,a					; D = Primary slot value
+     205.  01:40FE  78                  	ld		a,b
+     206.  01:40FF  E6 03               	and		3
+     207.  01:4101  B2                  	or		d
+     208.  01:4102  0F 0F 0F 0F         [4]	RRCA
+     209.  01:4106  57                  	ld		d,a		; D = Final Value for primary slot
+     210.  01:4107  78                  	ld		a,b		; Check if expanded
+     211.  01:4108  CB 7F               	bit		7,a
+     212.  01:410A  28 2A               	jr		z,1f	; Not Expanded
+     213.  01:410C                      	mainslot_setup	4
+     213.  01:410C  E6 03             >  and  3
+     213.  01:410E  0F 0F             > [2] rrca
+     213.  01:4110  E6 C0             >  and  0xC0
+     213.  01:4112  4F                >  ld  c,a
+     213.  01:4113  7A                >  ld  a,d
+     213.  01:4114  E6 3F             >  and  0x3F
+     213.  01:4116  B1                >  or  c
+     213.  01:4117  4F                >  ld  c,a
+     213.  01:4118                    > 
+     213.  01:4118  78                >  ld  a,b
+     213.  01:4119  E6 0C             >  and  0x0C
+     213.  01:411B  0F 0F             > [2] rrca
+     213.  01:411D  E6 03             >  and  3
+     213.  01:411F  47                >  ld  b,a
+     213.  01:4120  79                >  ld  a,c
+     213.  01:4121  D3 A8             >  out  (0A8h),a
+     213.  01:4123  3A FF FF          >  ld  a,(0FFFFh)
+     213.  01:4126  2F                >  cpl
+     213.  01:4127                    >  if (n<=4)
+     213.  01:4127  07 07 07 07       > [n] RLCA
+     213.  01:412B                    >  else
+     213.  01:412B                    ~ [8-n] RRCA
+     213.  01:412B                    ~  endif
+     213.  01:412B  E6 FC             >  and  0xFC
+     213.  01:412D  B0                >  or  b
+     213.  01:412E                    >  if (n<=4)
+     213.  01:412E  0F 0F 0F 0F       > [n] RRCA
+     213.  01:4132                    >  else
+     213.  01:4132                    ~ [8-n] RLCA
+     213.  01:4132                    ~  endif
+     213.  01:4132  32 FF FF          >  ld  (0FFFFh),a
+     213.  01:4135  47                >  ld  b,a
+     214.  01:4136  7A                  1:	ld		a,d				; A = Final value
+     215.  01:4137  D3 A8               	out		(0A8h),a		; Slot Final. Ram, rom c, rom c, Main
+     216.  01:4139  C9                  	ret
+     217.  01:413A                      	
+     218.  01:413A                      ; ---------------------------
+     219.  01:413A                      ; SETSLOTPAGE3
+     220.  01:413A                      ; Set the slot passed in A
+     221.  01:413A                      ; at page 3 in the Z80 address space
+     222.  01:413A                      ; A: Format FxxxSSPP
+     223.  01:413A                      ; ----------------------------
+     224.  01:413A                      	
+     225.  01:413A                      setslotpage3:
+     226.  01:413A  F3                  	di
+     227.  01:413B  47                  	ld		b,a					; B = Slot param in FxxxSSPP format
+     228.  01:413C  DB A8               	in		a,(0A8h)
+     229.  01:413E  07 07               [2]	RLCA
+     230.  01:4140  E6 FC               	and		0xFC
+     231.  01:4142  57                  	ld		d,a					; D = Primary slot value
+     232.  01:4143  78                  	ld		a,b
+     233.  01:4144  E6 03               	and		3
+     234.  01:4146  B2                  	or		d
+     235.  01:4147  0F 0F               [2]	RRCA	
+     236.  01:4149  57                  	ld		d,a		; D = Final Value for primary slot
+     237.  01:414A  78                  	ld		a,b		; Check if expanded
+     238.  01:414B  CB 7F               	bit		7,a
+     239.  01:414D  28 26               	jr		z,1f	; Not Expanded
+     240.  01:414F                      	mainslot_setup	2
+     240.  01:414F  E6 03             >  and  3
+     240.  01:4151  0F 0F             > [2] rrca
+     240.  01:4153  E6 C0             >  and  0xC0
+     240.  01:4155  4F                >  ld  c,a
+     240.  01:4156  7A                >  ld  a,d
+     240.  01:4157  E6 3F             >  and  0x3F
+     240.  01:4159  B1                >  or  c
+     240.  01:415A  4F                >  ld  c,a
+     240.  01:415B                    > 
+     240.  01:415B  78                >  ld  a,b
+     240.  01:415C  E6 0C             >  and  0x0C
+     240.  01:415E  0F 0F             > [2] rrca
+     240.  01:4160  E6 03             >  and  3
+     240.  01:4162  47                >  ld  b,a
+     240.  01:4163  79                >  ld  a,c
+     240.  01:4164  D3 A8             >  out  (0A8h),a
+     240.  01:4166  3A FF FF          >  ld  a,(0FFFFh)
+     240.  01:4169  2F                >  cpl
+     240.  01:416A                    >  if (n<=4)
+     240.  01:416A  07 07             > [n] RLCA
+     240.  01:416C                    >  else
+     240.  01:416C                    ~ [8-n] RRCA
+     240.  01:416C                    ~  endif
+     240.  01:416C  E6 FC             >  and  0xFC
+     240.  01:416E  B0                >  or  b
+     240.  01:416F                    >  if (n<=4)
+     240.  01:416F  0F 0F             > [n] RRCA
+     240.  01:4171                    >  else
+     240.  01:4171                    ~ [8-n] RLCA
+     240.  01:4171                    ~  endif
+     240.  01:4171  32 FF FF          >  ld  (0FFFFh),a
+     240.  01:4174  47                >  ld  b,a
+     241.  01:4175  7A                  1:	ld		a,d				; A = Final value
+     242.  01:4176  D3 A8               	out		(0A8h),a		; Slot Final. Ram, rom c, rom c, Main
+     243.  01:4178  C9                  	ret
+     261   01:4179                      	include PT3-ROM.ASM
+       1.  01:4179                      		; --- PT3 REPLAYER WORKING ON ROM ---
+       2.  01:4179                      		; --- Can be assembled with sjasm ---
+       3.  01:4179                      		; --- ROM version: MSX-KUN        ---
+       4.  01:4179                      		; --- sjasm version: ArtRag       ---
+       5.  01:4179                      
+       6.  01:4179                      ; Based on MSX version of PT3 by Dioniso
+       7.  01:4179                      ;
+       8.  01:4179                      ; This version of the replayer uses a fixed volume and note table, if you need a 
+       9.  01:4179                      ; different note table you can copy it from TABLES.TXT file, distributed with the
+      10.  01:4179                      ; original PT3 distribution. This version also allows the use of PT3 commands.
+      11.  01:4179                      ;
+      12.  01:4179                      ; PLAY and PSG WRITE routines seperated to allow independent calls
+      13.  01:4179                      ;
+      14.  01:4179                      ; ROM LENGTH: 1528 bytes
+      15.  01:4179                      ; RAM LENGTH:  382 bytes
+      16.  01:4179                      
+      17.  01:4179                      		; --- CONSTANT VALUES DEFINITION ---
+      18.  01:4179                      
+      19.  01:4179                      ;ChannelsVars
+      20.  01:4179                      ;struc	CHNPRM
+      21.  01:4179                      ;reset group
+      22.  01:4179  (01:0000)           CHNPRM_PsInOr	equ 0	;RESB 1
+      23.  01:4179  (01:0001)           CHNPRM_PsInSm	equ 1	;RESB 1
+      24.  01:4179  (01:0002)           CHNPRM_CrAmSl	equ 2	;RESB 1
+      25.  01:4179  (01:0003)           CHNPRM_CrNsSl	equ 3	;RESB 1
+      26.  01:4179  (01:0004)           CHNPRM_CrEnSl	equ 4	;RESB 1
+      27.  01:4179  (01:0005)           CHNPRM_TSlCnt	equ 5	;RESB 1
+      28.  01:4179  (01:0006)           CHNPRM_CrTnSl	equ 6	;RESW 1
+      29.  01:4179  (01:0008)           CHNPRM_TnAcc	equ 8	;RESW 1
+      30.  01:4179  (01:000A)           CHNPRM_COnOff	equ 10	;RESB 1
+      31.  01:4179                      ;reset group
+      32.  01:4179                      
+      33.  01:4179  (01:000B)           CHNPRM_OnOffD	equ 11	;RESB 1
+      34.  01:4179                      
+      35.  01:4179                      ;IX for PTDECOD here ( +12)
+      36.  01:4179  (01:000C)           CHNPRM_OffOnD	equ 12	;RESB 1
+      37.  01:4179  (01:000D)           CHNPRM_OrnPtr	equ 13	;RESW 1
+      38.  01:4179  (01:000F)           CHNPRM_SamPtr	equ 15	;RESW 1
+      39.  01:4179  (01:0011)           CHNPRM_NNtSkp	equ 17	;RESB 1
+      40.  01:4179  (01:0012)           CHNPRM_Note	equ 18	;RESB 1
+      41.  01:4179  (01:0013)           CHNPRM_SlToNt	equ 19	;RESB 1
+      42.  01:4179  (01:0014)           CHNPRM_Env_En	equ 20	;RESB 1
+      43.  01:4179  (01:0015)           CHNPRM_Flags	equ 21	;RESB 1
+      44.  01:4179                       ;Enabled - 0,SimpleGliss - 2
+      45.  01:4179  (01:0016)           CHNPRM_TnSlDl	equ 22	;RESB 1
+      46.  01:4179  (01:0017)           CHNPRM_TSlStp	equ 23	;RESW 1
+      47.  01:4179  (01:0019)           CHNPRM_TnDelt	equ 25	;RESW 1
+      48.  01:4179  (01:001B)           CHNPRM_NtSkCn	equ 27	;RESB 1
+      49.  01:4179  (01:001C)           CHNPRM_Volume	equ 28	;RESB 1
+      50.  01:4179  (01:001D)           nsample EQU 29
+      51.  01:4179  (01:001E)           CHNPRM_Size		equ 30	;RESB 1
+      52.  01:4179                      ;endstruc
+      53.  01:4179                      
+      54.  01:4179                      ;struc	AR
+      55.  01:4179  (01:0000)           AR_TonA		equ 0	;RESW 1
+      56.  01:4179  (01:0002)           AR_TonB		equ 2	;RESW 1
+      57.  01:4179  (01:0004)           AR_TonC		equ 4	;RESW 1
+      58.  01:4179  (01:0006)           AR_Noise	equ 6	;RESB 1
+      59.  01:4179  (01:0007)           AR_Mixer	equ 7	;RESB 1
+      60.  01:4179  (01:0008)           AR_AmplA	equ 8	;RESB 1
+      61.  01:4179  (01:0009)           AR_AmplB	equ 9	;RESB 1
+      62.  01:4179  (01:000A)           AR_AmplC	equ 10	;RESB 1
+      63.  01:4179  (01:000B)           AR_Env		equ 11	;RESW 1
+      64.  01:4179  (01:000D)           AR_EnvTp	equ 13	;RESB 1
+      65.  01:4179                      ;endstruc
+      66.  01:4179                      
+      67.  01:4179                      		; --- CODE STARTS HERE ---
+      68.  01:4179                      
+      69.  01:4179  21 0B D4            CHECKLP:	LD	HL,PT3_SETUP
+      70.  01:417C  CB FE               		SET	7,( HL)
+      71.  01:417E  CB 46               		BIT	0,( HL)
+      72.  01:4180  C8                  		RET	Z
+      73.  01:4181  E1                  		POP	HL
+      74.  01:4182  21 86 D4            		LD	HL,DelyCnt
+      75.  01:4185  34                  		INC	( HL)
+      76.  01:4186  21 47 D4            		LD	HL,ChanA+CHNPRM_NtSkCn
+      77.  01:4189  34                  		INC	( HL)
+      78.  01:418A                      PT3_MUTE:	
+      79.  01:418A  AF                  		XOR	A
+      80.  01:418B  32 C9 FF            		ld	(music_flag),a
+      81.  01:418E  67                  		LD	H,A
+      82.  01:418F  6F                  		LD	L,A
+      83.  01:4190  32 94 D4            		LD	( AYREGS+AR_AmplA),A
+      84.  01:4193  22 95 D4            		LD	( AYREGS+AR_AmplB),HL
+      85.  01:4196  3D                  		dec a
+      86.  01:4197  32 93 D4            		ld  (AYREGS+AR_Mixer),a
+      87.  01:419A  21 D7 4C            		ld	hl,mus_mute-100+16
+      88.  01:419D  CD CE 41            		call	mute_entry
+      89.  01:41A0  CD C0 49            		call	PT3_ROUT
+      90.  01:41A3  CD 79 4C            		call 	en_scc
+      91.  01:41A6  C8                  		ret	z
+      92.  01:41A7  21 8C D4            		ld      hl,AYREGS
+      93.  01:41AA  11 95 D5            		ld      de,AYREGS_CPY
+      94.  01:41AD  01 0D 00            		ld      bc,13
+      95.  01:41B0  ED B0               		ldir                        ; save a copy of AY register to avoid that SCCROUT get affected by AYFX
+      96.  01:41B2  CD 0D 4C            		call    probewavechanges
+      97.  01:41B5  CD D9 4B            		call    SCCROUT	
+      98.  01:41B8  CD 95 4C            		call 	en_slot
+      99.  01:41BB  C9                  		ret
+     100.  01:41BC                      		
+     101.  01:41BC                      PT3_INIT:	;HL - AddressOfModule - 100
+     102.  01:41BC  3E FF               		ld	a,0xff
+     103.  01:41BE  32 C9 FF            		ld	(music_flag),a
+     104.  01:41C1                      
+     105.  01:41C1                      ; call unpack with hl pointing to some compressed data, and de pointing to the destination.
+     106.  01:41C1  11 64 00            		ld  de,100
+     107.  01:41C4  19                  		add hl,de
+PT3-ROM.ASM line 108: Label not found: music_miz_buffer
+     108.  01:41C5  11 00 00            		ld  de,music_miz_buffer
+     109.  01:41C8  CD 4C 00            		call mom_depack_rom
+PT3-ROM.ASM line 110: Label not found: music_miz_buffer
+     110.  01:41CB  21 9C FF            		ld  hl,music_miz_buffer-100
+     111.  01:41CE                      mute_entry:		
+     112.  01:41CE  22 0C D4            		LD ( PT3_MODADDR),HL
+     113.  01:41D1  E5                  		PUSH HL
+     114.  01:41D2  11 64 00            		LD DE,100
+     115.  01:41D5  19                  		ADD HL,DE
+     116.  01:41D6  7E                  		LD A,( HL)
+     117.  01:41D7  32 27 D4            		LD ( PT3_Delay),A
+     118.  01:41DA  E5                  		PUSH HL
+     119.  01:41DB  DD E1               		POP IX
+     120.  01:41DD  19                  		ADD HL,DE
+     121.  01:41DE  22 0E D4            		LD ( PT3_CrPsPtr),HL
+     122.  01:41E1  DD 5E 02            		LD E,( IX+102-100)
+     123.  01:41E4  19                  		ADD HL,DE
+     124.  01:41E5  23                  		INC HL
+     125.  01:41E6  22 23 D4            		LD ( PT3_LPosPtr),HL
+     126.  01:41E9  D1                  		POP DE
+     127.  01:41EA  DD 6E 03            		LD L,( IX+103-100)
+     128.  01:41ED  DD 66 04            		LD H,( IX+104-100)
+     129.  01:41F0  19                  		ADD HL,DE
+     130.  01:41F1  22 25 D4            		LD ( PT3_PatsPtr),HL
+     131.  01:41F4  21 A9 00            		LD HL,169
+     132.  01:41F7  19                  		ADD HL,DE
+     133.  01:41F8  22 12 D4            		LD ( PT3_OrnPtrs),HL
+     134.  01:41FB  21 69 00            		LD HL,105
+     135.  01:41FE  19                  		ADD HL,DE
+     136.  01:41FF  22 10 D4            		LD ( PT3_SAMPTRS),HL
+     137.  01:4202  21 0B D4            		LD HL,PT3_SETUP
+     138.  01:4205  CB BE               		RES 7,( HL)
+     139.  01:4207                      
+     140.  01:4207                      		; --- CREATE PT3 VOLUME TABLE (c) Ivan Roshin, adapted by SapphiRe ---
+     141.  01:4207  21 11 00            		ld	hl,0x11
+     142.  01:420A  54                  		ld	d,h
+     143.  01:420B  5C                  		ld	e,h
+     144.  01:420C  DD 21 9C D4         		ld	IX,VT_+16
+     145.  01:4210  06 0F               		ld	b,15
+     146.  01:4212  E5                  _INITV1:	push	hl
+     147.  01:4213  19                  		add	hl,de
+     148.  01:4214  EB                  		ex	de,hl
+     149.  01:4215  ED 62               		sbc	hl,hl
+     150.  01:4217  48                  		ld	c,b
+     151.  01:4218  06 10               		ld	b,16
+     152.  01:421A  7D                  _INITV2:	ld	a,l
+     153.  01:421B  17                  		rla
+     154.  01:421C  7C                  		ld	a,h
+     155.  01:421D  CE 00               		adc	a,0
+     156.  01:421F  DD 77 00            		ld	( ix),a
+     157.  01:4222  DD 23               		inc	ix
+     158.  01:4224  19                  		add	hl,de
+     159.  01:4225  10 F3               		djnz	_INITV2
+     160.  01:4227  E1                  		pop	hl
+     161.  01:4228  7B                  		ld	a,e
+     162.  01:4229  FE 77               		cp	0x77
+     163.  01:422B  20 01               		jr	nz,_INITV3
+     164.  01:422D  1C                  		inc	e
+     165.  01:422E  41                  _INITV3:	ld	b,c
+     166.  01:422F  10 E1               		djnz	_INITV1
+     167.  01:4231                      
+     168.  01:4231                      		; --- INITIALIZE PT3 VARIABLES ---
+     169.  01:4231  AF                  		XOR A
+     170.  01:4232  21 2C D4            		LD HL,VARS
+     171.  01:4235  77                  		LD ( HL),A
+     172.  01:4236  11 2D D4            		LD DE,VARS+1
+     173.  01:4239  01 6F 00            		LD BC,VAR0END-VARS-1
+     174.  01:423C  ED B0               		LDIR
+     175.  01:423E                      
+     176.  01:423E  3C                  		INC A
+     177.  01:423F  32 86 D4            		LD ( DelyCnt),A
+     178.  01:4242  21 01 F0            		LD HL,0xF001 ;H - CHNPRM_Volume, L - CHNPRM_NtSkCn
+     179.  01:4245  22 47 D4            		LD ( ChanA+CHNPRM_NtSkCn),HL
+     180.  01:4248  22 65 D4            		LD ( ChanB+CHNPRM_NtSkCn),HL
+     181.  01:424B  22 83 D4            		LD ( ChanC+CHNPRM_NtSkCn),HL
+     182.  01:424E                      
+     183.  01:424E  21 77 46            		LD HL,EMPTYSAMORN
+     184.  01:4251  22 1D D4            		LD ( PT3_AdInPtA),HL ;ptr to zero
+     185.  01:4254  22 39 D4            		LD ( ChanA+CHNPRM_OrnPtr),HL ;ornament 0 is "0,1,0"
+     186.  01:4257  22 57 D4            		LD ( ChanB+CHNPRM_OrnPtr),HL ;in all versions from
+     187.  01:425A  22 75 D4            		LD ( ChanC+CHNPRM_OrnPtr),HL ;3.xx to 3.6x and VTII
+     188.  01:425D                      
+     189.  01:425D  22 3B D4            		LD ( ChanA+CHNPRM_SamPtr),HL ;S1 There is no default
+     190.  01:4260  22 59 D4            		LD ( ChanB+CHNPRM_SamPtr),HL ;S2 sample in PT3, so, you
+     191.  01:4263  22 77 D4            		LD ( ChanC+CHNPRM_SamPtr),HL ;S3 can comment S1,2,3; see
+     192.  01:4266                      					    ;also EMPTYSAMORN comment
+     193.  01:4266  C9                  		RET
+     194.  01:4267                      
+     195.  01:4267                      		;pattern decoder
+     196.  01:4267                      PD_OrSm:	
+     197.  01:4267  DD 36 08 00         		LD ( IX+(CHNPRM_Env_En-12)),0
+     198.  01:426B  CD F4 43            		CALL SETORN
+     199.  01:426E  0A                  		LD A,( BC)
+     200.  01:426F  03                  		INC BC
+     201.  01:4270  0F                  		RRCA
+     202.  01:4271                      
+     203.  01:4271  87                  PD_SAM:		ADD A,A
+     204.  01:4272  5F                  PD_SAM_:	LD E,A
+     205.  01:4273  16 00               		LD D,0
+     206.  01:4275                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     207.  01:4275                      ; SCC patch
+     208.  01:4275                      ;
+     209.  01:4275  DD 77 11            		LD (IX-12+ nsample),A
+     210.  01:4278                      
+     211.  01:4278  2A 10 D4            		LD HL,( PT3_SAMPTRS)
+     212.  01:427B  19                  		ADD HL,DE
+     213.  01:427C  5E                  		LD E,( HL)
+     214.  01:427D  23                  		INC HL
+     215.  01:427E  56                  		LD D,( HL)
+     216.  01:427F  2A 0C D4            		LD HL,( PT3_MODADDR)
+     217.  01:4282  19                  		ADD HL,DE
+     218.  01:4283  DD 75 03            		LD ( IX+(CHNPRM_SamPtr-12)),L
+     219.  01:4286  DD 74 04            		LD ( IX+(CHNPRM_SamPtr+1-12)),H
+     220.  01:4289  18 41               		JR PD_LOOP
+     221.  01:428B                      
+     222.  01:428B  07                  PD_VOL:		RLCA
+     223.  01:428C  07                  		RLCA
+     224.  01:428D  07                  		RLCA
+     225.  01:428E  07                  		RLCA
+     226.  01:428F  DD 77 10            		LD ( IX+(CHNPRM_Volume-12)),A
+     227.  01:4292  18 3B               		JR PD_LP2
+     228.  01:4294                      	
+     229.  01:4294  DD 77 08            PD_EOff:	LD ( IX+(CHNPRM_Env_En-12)),A
+     230.  01:4297  DD 77 F4            		LD ( IX+(CHNPRM_PsInOr-12)),A
+     231.  01:429A  18 33               		JR PD_LP2
+     232.  01:429C                      
+     233.  01:429C  3D                  PD_SorE:	DEC A
+     234.  01:429D  20 07               		JR NZ,PD_ENV
+     235.  01:429F  0A                  		LD A,( BC)
+     236.  01:42A0  03                  		INC BC
+     237.  01:42A1  DD 77 05            		LD ( IX+(CHNPRM_NNtSkp-12)),A
+     238.  01:42A4  18 29               		JR PD_LP2
+     239.  01:42A6                      
+     240.  01:42A6  CD D8 43            PD_ENV:		CALL SETENV
+     241.  01:42A9  18 24               		JR PD_LP2
+     242.  01:42AB                      
+     243.  01:42AB  CD F4 43            PD_ORN:		CALL SETORN
+     244.  01:42AE  18 1C               		JR PD_LOOP
+     245.  01:42B0                             
+     246.  01:42B0  DD 77 08            PD_ESAM:	LD ( IX+(CHNPRM_Env_En-12)),A
+     247.  01:42B3  DD 77 F4            		LD ( IX+(CHNPRM_PsInOr-12)),A
+     248.  01:42B6  C4 D8 43            		CALL NZ,SETENV
+     249.  01:42B9  0A                  		LD A,( BC)
+     250.  01:42BA  03                  		INC BC
+     251.  01:42BB  18 B5               		JR PD_SAM_
+     252.  01:42BD                      
+     253.  01:42BD  DD 7E 06            PTDECOD:	LD A,( IX+(CHNPRM_Note-12))
+     254.  01:42C0  32 1A D4            		LD ( PT3_PrNote),A
+     255.  01:42C3  DD 6E FA            		LD L,( IX+(CHNPRM_CrTnSl-12))
+     256.  01:42C6  DD 66 FB            		LD H,( IX+(CHNPRM_CrTnSl+1-12))
+     257.  01:42C9  22 1B D4            		LD ( PT3_PrSlide),HL
+     258.  01:42CC                      
+     259.  01:42CC  11 10 20            PD_LOOP:	LD DE,0x2010
+     260.  01:42CF  0A                  PD_LP2:		LD A,( BC)
+     261.  01:42D0  03                  		INC BC
+     262.  01:42D1  83                  		ADD A,E
+     263.  01:42D2  38 93               		JR C,PD_OrSm
+     264.  01:42D4  82                  		ADD A,D
+     265.  01:42D5  28 4A               		JR Z,PD_FIN
+     266.  01:42D7  38 98               		JR C,PD_SAM
+     267.  01:42D9  83                  		ADD A,E
+     268.  01:42DA  28 25               		JR Z,PD_REL
+     269.  01:42DC  38 AD               		JR C,PD_VOL
+     270.  01:42DE  83                  		ADD A,E
+     271.  01:42DF  28 B3               		JR Z,PD_EOff
+     272.  01:42E1  38 B9               		JR C,PD_SorE
+     273.  01:42E3  C6 60               		ADD A,96
+     274.  01:42E5  38 20               		JR C,PD_NOTE
+     275.  01:42E7  83                  		ADD A,E
+     276.  01:42E8  38 C1               		JR C,PD_ORN
+     277.  01:42EA  82                  		ADD A,D
+     278.  01:42EB  38 0F               		JR C,PD_NOIS
+     279.  01:42ED  83                  		ADD A,E
+     280.  01:42EE  38 C0               		JR C,PD_ESAM
+     281.  01:42F0  87                  		ADD A,A
+     282.  01:42F1  5F                  		LD E,A
+     283.  01:42F2  21 2D 23            		LD HL,0xFFFF & (SPCCOMS+0xFF20-0x2000)
+     284.  01:42F5  19                  		ADD HL,DE
+     285.  01:42F6  5E                  		LD E,( HL)
+     286.  01:42F7  23                  		INC HL
+     287.  01:42F8  56                  		LD D,( HL)
+     288.  01:42F9  D5                  		PUSH DE
+     289.  01:42FA  18 D0               		JR PD_LOOP
+     290.  01:42FC                      
+     291.  01:42FC  32 8A D4            PD_NOIS:	LD ( Ns_Base),A
+     292.  01:42FF  18 CE               		JR PD_LP2
+     293.  01:4301                      
+     294.  01:4301  DD CB 09 86         PD_REL:		RES 0,( IX+(CHNPRM_Flags-12))
+     295.  01:4305  18 08               		JR PD_RES
+     296.  01:4307                      	
+     297.  01:4307  DD 77 06            PD_NOTE:	LD ( IX+(CHNPRM_Note-12)),A
+     298.  01:430A  DD CB 09 C6         		SET 0,( IX+(CHNPRM_Flags-12))
+     299.  01:430E  AF                  		XOR A
+     300.  01:430F                      
+     301.  01:430F  ED 73 14 D4         PD_RES:		LD ( PT3_PDSP),SP
+     302.  01:4313  DD F9               		LD SP,IX
+     303.  01:4315  67                  		LD H,A
+     304.  01:4316  6F                  		LD L,A
+     305.  01:4317  E5                  		PUSH HL
+     306.  01:4318  E5                  		PUSH HL
+     307.  01:4319  E5                  		PUSH HL
+     308.  01:431A  E5                  		PUSH HL
+     309.  01:431B  E5                  		PUSH HL
+     310.  01:431C  E5                  		PUSH HL
+     311.  01:431D  ED 7B 14 D4         		LD SP,( PT3_PDSP)
+     312.  01:4321                      
+     313.  01:4321  DD 7E 05            PD_FIN:		LD A,( IX+(CHNPRM_NNtSkp-12))
+     314.  01:4324  DD 77 0F            		LD ( IX+(CHNPRM_NtSkCn-12)),A
+     315.  01:4327  C9                  		RET
+     316.  01:4328                      
+     317.  01:4328  DD CB 09 96         C_PORTM:	RES 2,( IX+(CHNPRM_Flags-12))
+     318.  01:432C  0A                  		LD A,( BC)
+     319.  01:432D  03                  		INC BC
+     320.  01:432E                      		;SKIP PRECALCULATED TONE DELTA ( BECAUSE
+     321.  01:432E                      		;CANNOT BE RIGHT AFTER PT3 COMPILATION)
+     322.  01:432E  03                  		INC BC
+     323.  01:432F  03                  		INC BC
+     324.  01:4330  DD 77 0A            		LD ( IX+(CHNPRM_TnSlDl-12)),A
+     325.  01:4333  DD 77 F9            		LD ( IX+(CHNPRM_TSlCnt-12)),A
+     326.  01:4336  11 7B 46            		LD DE,NT_
+     327.  01:4339  DD 7E 06            		LD A,( IX+(CHNPRM_Note-12))
+     328.  01:433C  DD 77 07            		LD ( IX+(CHNPRM_SlToNt-12)),A
+     329.  01:433F  87                  		ADD A,A
+     330.  01:4340  6F                  		LD L,A
+     331.  01:4341  26 00               		LD H,0
+     332.  01:4343  19                  		ADD HL,DE
+     333.  01:4344  7E                  		LD A,( HL)
+     334.  01:4345  23                  		INC HL
+     335.  01:4346  66                  		LD H,( HL)
+     336.  01:4347  6F                  		LD L,A
+     337.  01:4348  E5                  		PUSH HL
+     338.  01:4349  3A 1A D4            		LD A,( PT3_PrNote)
+     339.  01:434C  DD 77 06            		LD ( IX+(CHNPRM_Note-12)),A
+     340.  01:434F  87                  		ADD A,A
+     341.  01:4350  6F                  		LD L,A
+     342.  01:4351  26 00               		LD H,0
+     343.  01:4353  19                  		ADD HL,DE
+     344.  01:4354  5E                  		LD E,( HL)
+     345.  01:4355  23                  		INC HL
+     346.  01:4356  56                  		LD D,( HL)
+     347.  01:4357  E1                  		POP HL
+     348.  01:4358  ED 52               		SBC HL,DE
+     349.  01:435A  DD 75 0D            		LD ( IX+(CHNPRM_TnDelt-12)),L
+     350.  01:435D  DD 74 0E            		LD ( IX+(CHNPRM_TnDelt+1-12)),H
+     351.  01:4360  ED 5B 1B D4         		LD DE,( PT3_PrSlide)
+     352.  01:4364  DD 73 FA            		LD ( IX+(CHNPRM_CrTnSl-12)),E
+     353.  01:4367  DD 72 FB            		LD ( IX+(CHNPRM_CrTnSl+1-12)),D
+     354.  01:436A  0A                  		LD A,( BC) ;SIGNED TONE STEP
+     355.  01:436B  03                  		INC BC
+     356.  01:436C  08                  		EX AF,AF'
+     357.  01:436D  0A                  		LD A,( BC)
+     358.  01:436E  03                  		INC BC
+     359.  01:436F  A7                  		AND A
+     360.  01:4370  28 01               		JR Z,_NOSIG
+     361.  01:4372  EB                  		EX DE,HL
+     362.  01:4373  ED 52               _NOSIG:	SBC HL,DE
+     363.  01:4375  F2 7D 43            		JP P,SET_STP
+     364.  01:4378  2F                  		CPL
+     365.  01:4379  08                  		EX AF,AF'
+     366.  01:437A  ED 44               		NEG
+     367.  01:437C  08                  		EX AF,AF'
+     368.  01:437D  DD 77 0C            SET_STP:	LD ( IX+(CHNPRM_TSlStp+1-12)),A
+     369.  01:4380  08                  		EX AF,AF'
+     370.  01:4381  DD 77 0B            		LD ( IX+(CHNPRM_TSlStp-12)),A
+     371.  01:4384  DD 36 FE 00         		LD ( IX+(CHNPRM_COnOff-12)),0
+     372.  01:4388  C9                  		RET
+     373.  01:4389                      
+     374.  01:4389  DD CB 09 D6         C_GLISS:	SET 2,( IX+(CHNPRM_Flags-12))
+     375.  01:438D  0A                  		LD A,( BC)
+     376.  01:438E  03                  		INC BC
+     377.  01:438F  DD 77 0A            		LD ( IX+(CHNPRM_TnSlDl-12)),A
+     378.  01:4392  DD 77 F9            		LD ( IX+(CHNPRM_TSlCnt-12)),A
+     379.  01:4395  0A                  		LD A,( BC)
+     380.  01:4396  03                  		INC BC
+     381.  01:4397  08                  		EX AF,AF'
+     382.  01:4398  0A                  		LD A,( BC)
+     383.  01:4399  03                  		INC BC
+     384.  01:439A  18 E1               		JR SET_STP
+     385.  01:439C                      
+     386.  01:439C  0A                  C_SMPOS:	LD A,( BC)
+     387.  01:439D  03                  		INC BC
+     388.  01:439E  DD 77 F5            		LD ( IX+(CHNPRM_PsInSm-12)),A
+     389.  01:43A1  C9                  		RET
+     390.  01:43A2                      
+     391.  01:43A2  0A                  C_ORPOS:	LD A,( BC)
+     392.  01:43A3  03                  		INC BC
+     393.  01:43A4  DD 77 F4            		LD ( IX+(CHNPRM_PsInOr-12)),A
+     394.  01:43A7  C9                  		RET
+     395.  01:43A8                      
+     396.  01:43A8  0A                  C_VIBRT:	LD A,( BC)
+     397.  01:43A9  03                  		INC BC
+     398.  01:43AA  DD 77 FF            		LD ( IX+(CHNPRM_OnOffD-12)),A
+     399.  01:43AD  DD 77 FE            		LD ( IX+(CHNPRM_COnOff-12)),A
+     400.  01:43B0  0A                  		LD A,( BC)
+     401.  01:43B1  03                  		INC BC
+     402.  01:43B2  DD 77 00            		LD ( IX+(CHNPRM_OffOnD-12)),A
+     403.  01:43B5  AF                  		XOR A
+     404.  01:43B6  DD 77 F9            		LD ( IX+(CHNPRM_TSlCnt-12)),A
+     405.  01:43B9  DD 77 FA            		LD ( IX+(CHNPRM_CrTnSl-12)),A
+     406.  01:43BC  DD 77 FB            		LD ( IX+(CHNPRM_CrTnSl+1-12)),A
+     407.  01:43BF  C9                  		RET
+     408.  01:43C0                      
+     409.  01:43C0  0A                  C_ENGLS:	LD A,( BC)
+     410.  01:43C1  03                  		INC BC
+     411.  01:43C2  32 29 D4            		LD ( PT3_Env_Del),A
+     412.  01:43C5  32 89 D4            		LD ( CurEDel),A
+     413.  01:43C8  0A                  		LD A,( BC)
+     414.  01:43C9  03                  		INC BC
+     415.  01:43CA  6F                  		LD L,A
+     416.  01:43CB  0A                  		LD A,( BC)
+     417.  01:43CC  03                  		INC BC
+     418.  01:43CD  67                  		LD H,A
+     419.  01:43CE  22 2A D4            		LD ( PT3_ESldAdd),HL
+     420.  01:43D1  C9                  		RET
+     421.  01:43D2                      
+     422.  01:43D2  0A                  C_DELAY:	LD A,( BC)
+     423.  01:43D3  03                  		INC BC
+     424.  01:43D4  32 27 D4            		LD ( PT3_Delay),A
+     425.  01:43D7  C9                  		RET
+     426.  01:43D8                      	
+     427.  01:43D8  DD 73 08            SETENV:		LD ( IX+(CHNPRM_Env_En-12)),E
+     428.  01:43DB  32 99 D4            		LD ( AYREGS+AR_EnvTp),A
+     429.  01:43DE  0A                  		LD A,( BC)
+     430.  01:43DF  03                  		INC BC
+     431.  01:43E0  67                  		LD H,A
+     432.  01:43E1  0A                  		LD A,( BC)
+     433.  01:43E2  03                  		INC BC
+     434.  01:43E3  6F                  		LD L,A
+     435.  01:43E4  22 9A D4            		LD ( EnvBase),HL
+     436.  01:43E7  AF                  		XOR A
+     437.  01:43E8  DD 77 F4            		LD ( IX+(CHNPRM_PsInOr-12)),A
+     438.  01:43EB  32 89 D4            		LD ( CurEDel),A
+     439.  01:43EE  67                  		LD H,A
+     440.  01:43EF  6F                  		LD L,A
+     441.  01:43F0  22 87 D4            		LD ( CurESld),HL
+     442.  01:43F3  C9                  C_NOP:		RET
+     443.  01:43F4                      
+     444.  01:43F4  87                  SETORN:		ADD A,A
+     445.  01:43F5  5F                  		LD E,A
+     446.  01:43F6  16 00               		LD D,0
+     447.  01:43F8  DD 72 F4            		LD ( IX+(CHNPRM_PsInOr-12)),D
+     448.  01:43FB  2A 12 D4            		LD HL,( PT3_OrnPtrs)
+     449.  01:43FE  19                  		ADD HL,DE
+     450.  01:43FF  5E                  		LD E,( HL)
+     451.  01:4400  23                  		INC HL
+     452.  01:4401  56                  		LD D,( HL)
+     453.  01:4402  2A 0C D4            		LD HL,( PT3_MODADDR)
+     454.  01:4405  19                  		ADD HL,DE
+     455.  01:4406  DD 75 01            		LD ( IX+(CHNPRM_OrnPtr-12)),L
+     456.  01:4409  DD 74 02            		LD ( IX+(CHNPRM_OrnPtr+1-12)),H
+     457.  01:440C  C9                  		RET
+     458.  01:440D                      
+     459.  01:440D                      		;ALL 16 ADDRESSES TO PROTECT FROM BROKEN PT3 MODULES
+     460.  01:440D  F3 43               SPCCOMS:	dw C_NOP
+     461.  01:440F  89 43               		dw C_GLISS
+     462.  01:4411  28 43               		dw C_PORTM
+     463.  01:4413  9C 43               		dw C_SMPOS
+     464.  01:4415  A2 43               		dw C_ORPOS
+     465.  01:4417  A8 43               		dw C_VIBRT
+     466.  01:4419  F3 43               		dw C_NOP
+     467.  01:441B  F3 43               		dw C_NOP
+     468.  01:441D  C0 43               		dw C_ENGLS
+     469.  01:441F  D2 43               		dw C_DELAY
+     470.  01:4421  F3 43               		dw C_NOP
+     471.  01:4423  F3 43               		dw C_NOP
+     472.  01:4425  F3 43               		dw C_NOP
+     473.  01:4427  F3 43               		dw C_NOP
+     474.  01:4429  F3 43               		dw C_NOP
+     475.  01:442B  F3 43               		dw C_NOP
+     476.  01:442D                      
+     477.  01:442D  AF                  CHREGS:		XOR A
+     478.  01:442E  32 96 D4            		LD ( AYREGS+AR_AmplC),A
+     479.  01:4431  DD CB 15 46         		BIT 0,( IX+CHNPRM_Flags)
+     480.  01:4435  E5                  		PUSH HL
+     481.  01:4436  CA 5C 45            		JP Z,_CH_EXIT
+     482.  01:4439  ED 73 16 D4         		LD ( PT3_CSP),SP
+     483.  01:443D  DD 6E 0D            		LD L,( IX+CHNPRM_OrnPtr)
+     484.  01:4440  DD 66 0E            		LD H,( IX+CHNPRM_OrnPtr+1)
+     485.  01:4443  F9                  		LD SP,HL
+     486.  01:4444  D1                  		POP DE
+     487.  01:4445  67                  		LD H,A
+     488.  01:4446  DD 7E 00            		LD A,( IX+CHNPRM_PsInOr)
+     489.  01:4449  6F                  		LD L,A
+     490.  01:444A  39                  		ADD HL,SP
+     491.  01:444B  3C                  		INC A
+     492.  01:444C  BA                  		CP D
+     493.  01:444D  38 01               		JR C,_CH_ORPS
+     494.  01:444F  7B                  		LD A,E
+     495.  01:4450  DD 77 00            _CH_ORPS:	LD ( IX+CHNPRM_PsInOr),A
+     496.  01:4453  DD 7E 12            		LD A,( IX+CHNPRM_Note)
+     497.  01:4456  86                  		ADD A,( HL)
+     498.  01:4457  F2 5B 44            		JP P,_CH_NTP
+     499.  01:445A  AF                  		XOR A
+     500.  01:445B  FE 60               _CH_NTP:	CP 96
+     501.  01:445D  38 02               		JR C,_CH_NOK
+     502.  01:445F  3E 5F               		LD A,95
+     503.  01:4461  87                  _CH_NOK:	ADD A,A
+     504.  01:4462  08                  		EX AF,AF'
+     505.  01:4463  DD 6E 0F            		LD L,( IX+CHNPRM_SamPtr)
+     506.  01:4466  DD 66 10            		LD H,( IX+CHNPRM_SamPtr+1)
+     507.  01:4469  F9                  		LD SP,HL
+     508.  01:446A  D1                  		POP DE
+     509.  01:446B  26 00               		LD H,0
+     510.  01:446D  DD 7E 01            		LD A,( IX+CHNPRM_PsInSm)
+     511.  01:4470  47                  		LD B,A
+     512.  01:4471  87                  		ADD A,A
+     513.  01:4472  87                  		ADD A,A
+     514.  01:4473  6F                  		LD L,A
+     515.  01:4474  39                  		ADD HL,SP
+     516.  01:4475  F9                  		LD SP,HL
+     517.  01:4476  78                  		LD A,B
+     518.  01:4477  3C                  		INC A
+     519.  01:4478  BA                  		CP D
+     520.  01:4479  38 01               		JR C,_CH_SMPS
+     521.  01:447B  7B                  		LD A,E
+     522.  01:447C  DD 77 01            _CH_SMPS:	LD ( IX+CHNPRM_PsInSm),A
+     523.  01:447F  C1                  		POP BC
+     524.  01:4480  E1                  		POP HL
+     525.  01:4481  DD 5E 08            		LD E,( IX+CHNPRM_TnAcc)
+     526.  01:4484  DD 56 09            		LD D,( IX+CHNPRM_TnAcc+1)
+     527.  01:4487  19                  		ADD HL,DE
+     528.  01:4488  CB 70               		BIT 6,B
+     529.  01:448A  28 06               		JR Z,_CH_NOAC
+     530.  01:448C  DD 75 08            		LD ( IX+CHNPRM_TnAcc),L
+     531.  01:448F  DD 74 09            		LD ( IX+CHNPRM_TnAcc+1),H
+     532.  01:4492  EB                  _CH_NOAC:	EX DE,HL
+     533.  01:4493  08                  		EX AF,AF'
+     534.  01:4494  6F                  		LD L,A
+     535.  01:4495  26 00               		LD H,0
+     536.  01:4497  31 7B 46            		LD SP,NT_
+     537.  01:449A  39                  		ADD HL,SP
+     538.  01:449B  F9                  		LD SP,HL
+     539.  01:449C  E1                  		POP HL
+     540.  01:449D  19                  		ADD HL,DE
+     541.  01:449E  DD 5E 06            		LD E,( IX+CHNPRM_CrTnSl)
+     542.  01:44A1  DD 56 07            		LD D,( IX+CHNPRM_CrTnSl+1)
+     543.  01:44A4  19                  		ADD HL,DE
+     544.  01:44A5  ED 7B 16 D4         		LD SP,( PT3_CSP)
+     545.  01:44A9  E3                  		EX ( SP),HL
+     546.  01:44AA  AF                  		XOR A
+     547.  01:44AB  DD B6 05            		OR ( IX+CHNPRM_TSlCnt)
+     548.  01:44AE  28 3E               		JR Z,_CH_AMP
+     549.  01:44B0  DD 35 05            		DEC ( IX+CHNPRM_TSlCnt)
+     550.  01:44B3  20 39               		JR NZ,_CH_AMP
+     551.  01:44B5  DD 7E 16            		LD A,( IX+CHNPRM_TnSlDl)
+     552.  01:44B8  DD 77 05            		LD ( IX+CHNPRM_TSlCnt),A
+     553.  01:44BB  DD 6E 17            		LD L,( IX+CHNPRM_TSlStp)
+     554.  01:44BE  DD 66 18            		LD H,( IX+CHNPRM_TSlStp+1)
+     555.  01:44C1  7C                  		LD A,H
+     556.  01:44C2  19                  		ADD HL,DE
+     557.  01:44C3  DD 75 06            		LD ( IX+CHNPRM_CrTnSl),L
+     558.  01:44C6  DD 74 07            		LD ( IX+CHNPRM_CrTnSl+1),H
+     559.  01:44C9  DD CB 15 56         		BIT 2,( IX+CHNPRM_Flags)
+     560.  01:44CD  20 1F               		JR NZ,_CH_AMP
+     561.  01:44CF  DD 5E 19            		LD E,( IX+CHNPRM_TnDelt)
+     562.  01:44D2  DD 56 1A            		LD D,( IX+CHNPRM_TnDelt+1)
+     563.  01:44D5  A7                  		AND A
+     564.  01:44D6  28 01               		JR Z,_CH_STPP
+     565.  01:44D8  EB                  		EX DE,HL
+     566.  01:44D9  ED 52               _CH_STPP:	SBC HL,DE
+     567.  01:44DB  FA EE 44            		JP M,_CH_AMP
+     568.  01:44DE  DD 7E 13            		LD A,( IX+CHNPRM_SlToNt)
+     569.  01:44E1  DD 77 12            		LD ( IX+CHNPRM_Note),A
+     570.  01:44E4  AF                  		XOR A
+     571.  01:44E5  DD 77 05            		LD ( IX+CHNPRM_TSlCnt),A
+     572.  01:44E8  DD 77 06            		LD ( IX+CHNPRM_CrTnSl),A
+     573.  01:44EB  DD 77 07            		LD ( IX+CHNPRM_CrTnSl+1),A
+     574.  01:44EE  DD 7E 02            _CH_AMP:	LD A,( IX+CHNPRM_CrAmSl)
+     575.  01:44F1  CB 79               		BIT 7,C
+     576.  01:44F3  28 13               		JR Z,_CH_NOAM
+     577.  01:44F5  CB 71               		BIT 6,C
+     578.  01:44F7  28 07               		JR Z,_CH_AMIN
+     579.  01:44F9  FE 0F               		CP 15
+     580.  01:44FB  28 0B               		JR Z,_CH_NOAM
+     581.  01:44FD  3C                  		INC A
+     582.  01:44FE  18 05               		JR _CH_SVAM
+     583.  01:4500  FE F1               _CH_AMIN:	CP -15
+     584.  01:4502  28 04               		JR Z,_CH_NOAM
+     585.  01:4504  3D                  		DEC A
+     586.  01:4505  DD 77 02            _CH_SVAM:	LD ( IX+CHNPRM_CrAmSl),A
+     587.  01:4508  6F                  _CH_NOAM:	LD L,A
+     588.  01:4509  78                  		LD A,B
+     589.  01:450A  E6 0F               		AND 15
+     590.  01:450C  85                  		ADD A,L
+     591.  01:450D  F2 11 45            		JP P,_CH_APOS
+     592.  01:4510  AF                  		XOR A
+     593.  01:4511  FE 10               _CH_APOS:	CP 16
+     594.  01:4513  38 02               		JR C,_CH_VOL
+     595.  01:4515  3E 0F               		LD A,15
+     596.  01:4517  DD B6 1C            _CH_VOL:	OR ( IX+CHNPRM_Volume)
+     597.  01:451A  6F                  		LD L,A
+     598.  01:451B  26 00               		LD H,0
+     599.  01:451D  11 8C D4            		LD DE,VT_
+     600.  01:4520  19                  		ADD HL,DE
+     601.  01:4521  7E                  		LD A,( HL)
+     602.  01:4522  CB 41               _CH_ENV:	BIT 0,C
+     603.  01:4524  20 03               		JR NZ,_CH_NOEN
+     604.  01:4526  DD B6 14            		OR ( IX+CHNPRM_Env_En)
+     605.  01:4529  32 96 D4            _CH_NOEN:	LD ( AYREGS+AR_AmplC),A
+     606.  01:452C  CB 78               		BIT 7,B
+     607.  01:452E  79                  		LD A,C
+     608.  01:452F  28 19               		JR Z,_NO_ENSL
+     609.  01:4531  17                  		RLA
+     610.  01:4532  17                  		RLA
+     611.  01:4533  CB 2F               		SRA A
+     612.  01:4535  CB 2F               		SRA A
+     613.  01:4537  CB 2F               		SRA A
+     614.  01:4539  DD 86 04            		ADD A,( IX+CHNPRM_CrEnSl) ;SEE COMMENT BELOW
+     615.  01:453C  CB 68               		BIT 5,B
+     616.  01:453E  28 03               		JR Z,_NO_ENAC
+     617.  01:4540  DD 77 04            		LD ( IX+CHNPRM_CrEnSl),A
+     618.  01:4543  21 28 D4            _NO_ENAC:	LD HL,PT3_AddToEn
+     619.  01:4546  86                  		ADD A,( HL) ;BUG IN PT3 - NEED WORD HERE.
+     620.  01:4547                      			   ;FIX IT IN NEXT VERSION?
+     621.  01:4547  77                  		LD ( HL),A
+     622.  01:4548  18 0E               		JR _CH_MIX
+     623.  01:454A  1F                  _NO_ENSL:	RRA
+     624.  01:454B  DD 86 03            		ADD A,( IX+CHNPRM_CrNsSl)
+     625.  01:454E  32 8B D4            		LD ( AddToNs),A
+     626.  01:4551  CB 68               		BIT 5,B
+     627.  01:4553  28 03               		JR Z,_CH_MIX
+     628.  01:4555  DD 77 03            		LD ( IX+CHNPRM_CrNsSl),A
+     629.  01:4558  78                  _CH_MIX:	LD A,B
+     630.  01:4559  1F                  		RRA
+     631.  01:455A  E6 48               		AND 0x48
+     632.  01:455C  21 93 D4            _CH_EXIT:	LD HL,AYREGS+AR_Mixer
+     633.  01:455F  B6                  		OR ( HL)
+     634.  01:4560  0F                  		RRCA
+     635.  01:4561  77                  		LD ( HL),A
+     636.  01:4562  E1                  		POP HL
+     637.  01:4563  AF                  		XOR A
+     638.  01:4564  DD B6 0A            		OR ( IX+CHNPRM_COnOff)
+     639.  01:4567  C8                  		RET Z
+     640.  01:4568  DD 35 0A            		DEC ( IX+CHNPRM_COnOff)
+     641.  01:456B  C0                  		RET NZ
+     642.  01:456C  DD AE 15            		XOR ( IX+CHNPRM_Flags)
+     643.  01:456F  DD 77 15            		LD ( IX+CHNPRM_Flags),A
+     644.  01:4572  1F                  		RRA
+     645.  01:4573  DD 7E 0B            		LD A,( IX+CHNPRM_OnOffD)
+     646.  01:4576  38 03               		JR C,_CH_ONDL
+     647.  01:4578  DD 7E 0C            		LD A,( IX+CHNPRM_OffOnD)
+     648.  01:457B  DD 77 0A            _CH_ONDL:	LD ( IX+CHNPRM_COnOff),A
+     649.  01:457E  C9                  		RET
+     650.  01:457F                      
+     651.  01:457F  AF                  PT3_PLAY:	XOR A
+     652.  01:4580  32 28 D4            		LD ( PT3_AddToEn),A
+     653.  01:4583  32 93 D4            		LD ( AYREGS+AR_Mixer),A
+     654.  01:4586  3D                  		DEC A
+     655.  01:4587  32 99 D4            		LD ( AYREGS+AR_EnvTp),A
+     656.  01:458A  21 86 D4            		LD HL,DelyCnt
+     657.  01:458D  35                  		DEC ( HL)
+     658.  01:458E  C2 15 46            		JP NZ,_PL2
+     659.  01:4591  21 47 D4            		LD HL,ChanA+CHNPRM_NtSkCn
+     660.  01:4594  35                  		DEC ( HL)
+     661.  01:4595  20 4E               		JR NZ,_PL1B
+     662.  01:4597  ED 4B 1D D4         		LD BC,( PT3_AdInPtA)
+     663.  01:459B  0A                  		LD A,( BC)
+     664.  01:459C  A7                  		AND A
+     665.  01:459D  20 3B               		JR NZ,_PL1A
+     666.  01:459F  57                  		LD D,A
+     667.  01:45A0  32 8A D4            		LD ( Ns_Base),A
+     668.  01:45A3  2A 0E D4            		LD HL,( PT3_CrPsPtr)
+     669.  01:45A6  23                  		INC HL
+     670.  01:45A7  7E                  		LD A,( HL)
+     671.  01:45A8  3C                  		INC A
+     672.  01:45A9  20 08               		JR NZ,_PLNLP
+     673.  01:45AB  CD 79 41            		CALL CHECKLP
+     674.  01:45AE  2A 23 D4            		LD HL,( PT3_LPosPtr)
+     675.  01:45B1  7E                  		LD A,( HL)
+     676.  01:45B2  3C                  		INC A
+     677.  01:45B3  22 0E D4            _PLNLP:	LD ( PT3_CrPsPtr),HL
+     678.  01:45B6  3D                  		DEC A
+     679.  01:45B7  87                  		ADD A,A
+     680.  01:45B8  5F                  		LD E,A
+     681.  01:45B9  CB 12               		RL D
+     682.  01:45BB  2A 25 D4            		LD HL,( PT3_PatsPtr)
+     683.  01:45BE  19                  		ADD HL,DE
+     684.  01:45BF  ED 5B 0C D4         		LD DE,( PT3_MODADDR)
+     685.  01:45C3  ED 73 18 D4         		LD ( PT3_PSP),SP
+     686.  01:45C7  F9                  		LD SP,HL
+     687.  01:45C8  E1                  		POP HL
+     688.  01:45C9  19                  		ADD HL,DE
+     689.  01:45CA  44                  		LD B,H
+     690.  01:45CB  4D                  		LD C,L
+     691.  01:45CC  E1                  		POP HL
+     692.  01:45CD  19                  		ADD HL,DE
+     693.  01:45CE  22 1F D4            		LD ( PT3_AdInPtB),HL
+     694.  01:45D1  E1                  		POP HL
+     695.  01:45D2  19                  		ADD HL,DE
+     696.  01:45D3  22 21 D4            		LD ( PT3_AdInPtC),HL
+     697.  01:45D6  ED 7B 18 D4         		LD SP,( PT3_PSP)
+     698.  01:45DA                      
+     699.  01:45DA  DD 21 38 D4         _PL1A:		LD IX,ChanA+12
+     700.  01:45DE  CD BD 42            		CALL PTDECOD
+     701.  01:45E1  ED 43 1D D4         		LD ( PT3_AdInPtA),BC
+     702.  01:45E5                      
+     703.  01:45E5  21 65 D4            _PL1B:		LD HL,ChanB+CHNPRM_NtSkCn
+     704.  01:45E8  35                  		DEC ( HL)
+     705.  01:45E9  20 0F               		JR NZ,_PL1C
+     706.  01:45EB  DD 21 56 D4         		LD IX,ChanB+12
+     707.  01:45EF  ED 4B 1F D4         		LD BC,( PT3_AdInPtB)
+     708.  01:45F3  CD BD 42            		CALL PTDECOD
+     709.  01:45F6  ED 43 1F D4         		LD ( PT3_AdInPtB),BC
+     710.  01:45FA                      
+     711.  01:45FA  21 83 D4            _PL1C:		LD HL,ChanC+CHNPRM_NtSkCn
+     712.  01:45FD  35                  		DEC ( HL)
+     713.  01:45FE  20 0F               		JR NZ,_PL1D
+     714.  01:4600  DD 21 74 D4         		LD IX,ChanC+12
+     715.  01:4604  ED 4B 21 D4         		LD BC,( PT3_AdInPtC)
+     716.  01:4608  CD BD 42            		CALL PTDECOD
+     717.  01:460B  ED 43 21 D4         		LD ( PT3_AdInPtC),BC
+     718.  01:460F                      
+     719.  01:460F  3A 27 D4            _PL1D:		LD A,( PT3_Delay)
+     720.  01:4612  32 86 D4            		LD ( DelyCnt),A
+     721.  01:4615                      
+     722.  01:4615  DD 21 2C D4         _PL2:		LD IX,ChanA
+     723.  01:4619  2A 8C D4            		LD HL,( AYREGS+AR_TonA)
+     724.  01:461C  CD 2D 44            		CALL CHREGS
+     725.  01:461F  22 8C D4            		LD ( AYREGS+AR_TonA),HL
+     726.  01:4622  3A 96 D4            		LD A,( AYREGS+AR_AmplC)
+     727.  01:4625  32 94 D4            		LD ( AYREGS+AR_AmplA),A
+     728.  01:4628  DD 21 4A D4         		LD IX,ChanB
+     729.  01:462C  2A 8E D4            		LD HL,( AYREGS+AR_TonB)
+     730.  01:462F  CD 2D 44            		CALL CHREGS
+     731.  01:4632  22 8E D4            		LD ( AYREGS+AR_TonB),HL
+     732.  01:4635  3A 96 D4            		LD A,( AYREGS+AR_AmplC)
+     733.  01:4638  32 95 D4            		LD ( AYREGS+AR_AmplB),A
+     734.  01:463B  DD 21 68 D4         		LD IX,ChanC
+     735.  01:463F  2A 90 D4            		LD HL,( AYREGS+AR_TonC)
+     736.  01:4642  CD 2D 44            		CALL CHREGS
+     737.  01:4645  22 90 D4            		LD ( AYREGS+AR_TonC),HL
+     738.  01:4648                      
+     739.  01:4648  2A 2A 66            		LD HL,( Ns_Base_AddToNs)
+     740.  01:464B  7C                  		LD A,H
+     741.  01:464C  85                  		ADD A,L
+     742.  01:464D  32 92 D4            		LD ( AYREGS+AR_Noise),A
+     743.  01:4650                      
+     744.  01:4650  3A 28 D4            		LD A,( PT3_AddToEn)
+     745.  01:4653  5F                  		LD E,A
+     746.  01:4654  87                  		ADD A,A
+     747.  01:4655  9F                  		SBC A,A
+     748.  01:4656  57                  		LD D,A
+     749.  01:4657  2A 9A D4            		LD HL,( EnvBase)
+     750.  01:465A  19                  		ADD HL,DE
+     751.  01:465B  ED 5B 87 D4         		LD DE,( CurESld)
+     752.  01:465F  19                  		ADD HL,DE
+     753.  01:4660  22 97 D4            		LD ( AYREGS+AR_Env),HL
+     754.  01:4663                      
+     755.  01:4663  AF                  		XOR A
+     756.  01:4664  21 89 D4            		LD HL,CurEDel
+     757.  01:4667  B6                  		OR ( HL)
+     758.  01:4668  C8                  		RET Z
+     759.  01:4669  35                  		DEC ( HL)
+     760.  01:466A  C0                  		RET NZ
+     761.  01:466B  3A 29 D4            		LD A,( PT3_Env_Del)
+     762.  01:466E  77                  		LD ( HL),A
+     763.  01:466F  2A 2A D4            		LD HL,( PT3_ESldAdd)
+     764.  01:4672  19                  		ADD HL,DE
+     765.  01:4673  22 87 D4            		LD ( CurESld),HL
+     766.  01:4676  C9                  		RET
+     767.  01:4677                      
+     768.  01:4677                      
+     769.  01:4677  00 01 00 90         EMPTYSAMORN: 	db 0,1,0,0x90 ;delete $90 if you don't need default sample
+     770.  01:467B                      
+     771.  01:467B                      NT_:	;Note table 2 ( if you use another in Vortex Tracker II copy it and paste
+     772.  01:467B                      	;it from TABLES.TXT)
+     773.  01:467B                      
+     774.  01:467B                      	dw 0x0D10,0x0C55,0x0BA4,0x0AFC,0x0A5F,0x09CA,0x093D,0x08B8,0x083B,0x07C5,0x0755,0x06EC
+     774.  01:467B  10 0D 55 0C A4 0B FC 0A 5F 0A CA 09 3D 09 B8 08 
+     774.  01:468B  3B 08 C5 07 55 07 EC 06 
+     775.  01:4693                      	dw 0x0688,0x062A,0x05D2,0x057E,0x052F,0x04E5,0x049E,0x045C,0x041D,0x03E2,0x03AB,0x0376
+     775.  01:4693  88 06 2A 06 D2 05 7E 05 2F 05 E5 04 9E 04 5C 04 
+     775.  01:46A3  1D 04 E2 03 AB 03 76 03 
+     776.  01:46AB                      	dw 0x0344,0x0315,0x02E9,0x02BF,0x0298,0x0272,0x024F,0x022E,0x020F,0x01F1,0x01D5,0x01BB
+     776.  01:46AB  44 03 15 03 E9 02 BF 02 98 02 72 02 4F 02 2E 02 
+     776.  01:46BB  0F 02 F1 01 D5 01 BB 01 
+     777.  01:46C3                      	dw 0x01A2,0x018B,0x0174,0x0160,0x014C,0x0139,0x0128,0x0117,0x0107,0x00F9,0x00EB,0x00DD
+     777.  01:46C3  A2 01 8B 01 74 01 60 01 4C 01 39 01 28 01 17 01 
+     777.  01:46D3  07 01 F9 00 EB 00 DD 00 
+     778.  01:46DB                      	dw 0x00D1,0x00C5,0x00BA,0x00B0,0x00A6,0x009D,0x0094,0x008C,0x0084,0x007C,0x0075,0x006F
+     778.  01:46DB  D1 00 C5 00 BA 00 B0 00 A6 00 9D 00 94 00 8C 00 
+     778.  01:46EB  84 00 7C 00 75 00 6F 00 
+     779.  01:46F3                      	dw 0x0069,0x0063,0x005D,0x0058,0x0053,0x004E,0x004A,0x0046,0x0042,0x003E,0x003B,0x0037
+     779.  01:46F3  69 00 63 00 5D 00 58 00 53 00 4E 00 4A 00 46 00 
+     779.  01:4703  42 00 3E 00 3B 00 37 00 
+     780.  01:470B                      	dw 0x0034,0x0031,0x002F,0x002C,0x0029,0x0027,0x0025,0x0023,0x0021,0x001F,0x001D,0x001C
+     780.  01:470B  34 00 31 00 2F 00 2C 00 29 00 27 00 25 00 23 00 
+     780.  01:471B  21 00 1F 00 1D 00 1C 00 
+     781.  01:4723                      	dw 0x001A,0x0019,0x0017,0x0016,0x0015,0x0014,0x0012,0x0011,0x0010,0x000F,0x000E,0x000D
+     781.  01:4723  1A 00 19 00 17 00 16 00 15 00 14 00 12 00 11 00 
+     781.  01:4733  10 00 0F 00 0E 00 0D 00 
+     262   01:473B                      	include AYFX-ROM.ASM
+       1.  01:473B                      		; --- ayFX REPLAYER v1.11r ---
+       2.  01:473B                      
+       3.  01:473B                      		; --- v1.11s AFB file support
+       4.  01:473B                      		; --- v1.11r If a frame volume is zero then no AYREGS update
+       5.  01:473B                      		; --- v1.1r  Relative volume using PT3 Volume Table
+       6.  01:473B                      		; --- v1.1   Explicit priority (as suggested by AR)
+       7.  01:473B                      		; --- v1.0f  Bug fixed (error when using noise)
+       8.  01:473B                      		; --- v1.0   Initial release
+       9.  01:473B                      
+      10.  01:473B  (01:0014)           n_sfx	equ	20
+      11.  01:473B  (00C5)              	align 0x100
+      12.  01:4800                      sfx_prio:
+      13.  01:4800                      	;	00,01,02,03,04,05,06,07,08,09,10,11,12,13,14,15,16,17,18,19,20
+      14.  01:4800                      	db	03,00,02,02,02,02,01,01,04,00,03,01,01,00,00,00,00,00,00,00,00
+      14.  01:4800  03 00 02 02 02 02 01 01 04 00 03 01 01 00 00 00 
+      14.  01:4810  00 00 00 00 00 
+      15.  01:4815                      	
+      16.  01:4815  (01:C800)           ayFX_STREAMS equ miz_buffer	
+      17.  01:4815                      
+      18.  01:4815                      ayFX_SETUP:	; --- ayFX replayer setup ---
+AYFX-ROM.ASM line 19: Label not found: sfxBank_miz
+      19.  01:4815  21 00 00            		ld	hl,	sfxBank_miz
+      20.  01:4818  11 00 C8            		ld	de,miz_buffer
+      21.  01:481B  CD 4C 00            		call	mom_depack_rom
+      22.  01:481E  3E 01               		ld	a,1				; Starting channel
+      23.  01:4820  32 C2 D5            		ld	(ayFX_CHANNEL),a		; Updated
+      24.  01:4823                      	
+      25.  01:4823                      ayFX_END:	; --- End of an ayFX stream ---
+      26.  01:4823  3E FF               		ld	a,255				; Lowest ayFX priority
+      27.  01:4825  32 B9 D5            		ld	(ayFX_PRIORITY),a		; Priority saved (not playing ayFX stream)
+      28.  01:4828  C9                  		ret					; Return
+      29.  01:4829                      
+      30.  01:4829                      ayFX_INIT:	; ---     INIT A NEW ayFX STREAM     ---
+      31.  01:4829                      		; --- INPUT: A -> sound to be played ---
+      32.  01:4829                      		; ---        C -> Volume     ---
+      33.  01:4829  C5                  		push	bc				; Store bc in stack
+      34.  01:482A  D5                  		push	de				; Store de in stack
+      35.  01:482B  E5                  		push	hl				; Store hl in stack
+      36.  01:482C  6F                  		ld	l,a					; l:=a (new ayFX stream index)
+      37.  01:482D  26 48               		ld	h,high sfx_prio		
+      38.  01:482F  66                  		ld	h,(hl)				; h:=New priority
+      39.  01:4830                      		
+      40.  01:4830  3A B9 D5            		ld	a,(ayFX_PRIORITY)	; a:=Current ayFX stream priority
+      41.  01:4833  BC                  		cp	h					; If new ayFX stream priority is higher than currently one...
+      42.  01:4834  DA 69 48            		jp	c,_INIT_END			; ...we don't start the new ayFX stream
+      43.  01:4837                      		; --- INITS ---
+      44.  01:4837  7C                  		ld	a,h
+      45.  01:4838  32 B9 D5            		ld	(ayFX_PRIORITY),a	; new ayFX stream priority saved in RAM
+      46.  01:483B  45                  		ld	b,l					; b:=l (new ayFX stream index)
+      47.  01:483C                      		; --- Volume adjust using PT3 volume table ---
+      48.  01:483C                      								; c:=New volume 
+      49.  01:483C  3E 0F               		ld	a,15				; a:=15
+      50.  01:483E  91                  		sub	c					; a:=15-New volume = relative volume
+      51.  01:483F  CA 6D 48            		jp	z,_INIT_NOSOUND		; If priority is 15 -> no sound output (volume is zero)
+      52.  01:4842                      
+      53.  01:4842  21 8D D5                    ld  hl,_sfx_vol_fix
+      54.  01:4845  86                          add a,(hl)
+      55.  01:4846  FA 6D 48                    jp  m,_INIT_NOSOUND
+      56.  01:4849                      
+      57.  01:4849  20 01               		jr  nz,1f
+      58.  01:484B  3C                  		inc	a
+      59.  01:484C                      1:        
+      60.  01:484C                      
+      61.  01:484C  87                  		add	a,a				; a:=a*2
+      62.  01:484D  87                  		add	a,a				; a:=a*4
+      63.  01:484E  87                  		add	a,a				; a:=a*8
+      64.  01:484F  87                  		add	a,a				; a:=a*16
+      65.  01:4850  5F                  		ld	e,a				; e:=a
+      66.  01:4851  16 00               		ld	d,0				; de:=a
+      67.  01:4853  21 8C D4            		ld	hl,VT_				; hl:=PT3 volume table
+      68.  01:4856  19                  		add	hl,de				; hl is a pointer to the relative volume table
+      69.  01:4857  22 C3 D5            		ld	(ayFX_VT),hl			; Save pointer
+      70.  01:485A                      		; --- ayFX stream pointer ---
+      71.  01:485A  68                  		ld	l,b				; l:=b (new ayFX stream index)
+      72.  01:485B  26 00               		ld	h,0				; hl:=b (new ayFX stream index)
+      73.  01:485D  29                  		add	hl,hl				; hl:=hl*2
+      74.  01:485E  01 01 C8            		ld bc, ayFX_STREAMS+1	; address offset table effects
+      75.  01:4861  09                  		add hl, bc				; PATCH for AFB support
+      76.  01:4862  4E                  		ld c, (hl)
+      77.  01:4863  23                  		inc hl
+      78.  01:4864  46                  		ld b, (hl)
+      79.  01:4865  09                  		add hl, bc			; new effect address obtained in hl	
+      80.  01:4866  22 BC D5            		ld	(ayFX_POINTER),hl		; Pointer saved in RAM
+      81.  01:4869                      _INIT_END:	
+      82.  01:4869  E1                  		pop	hl				; Retrieve hl from stack
+      83.  01:486A  D1                  		pop	de				; Retrieve de from stack
+      84.  01:486B  C1                  		pop	bc				; Retrieve bc from stack
+      85.  01:486C  C9                  		ret					; Return
+      86.  01:486D                      _INIT_NOSOUND:	; --- Init a sample with relative volume zero -> no sound output ---
+      87.  01:486D  3E FF               		ld	a,255				; Lowest ayFX priority
+      88.  01:486F  32 B9 D5            		ld	(ayFX_PRIORITY),a		; Priority saved (not playing ayFX stream)
+      89.  01:4872  C3 69 48            		jp	_INIT_END			; Jumps to _INIT_END
+      90.  01:4875                      
+      91.  01:4875                      ayFX_FRAME:
+      92.  01:4875                      ayFX_PLAY:	; --- PLAY A FRAME OF AN ayFX STREAM ---
+      93.  01:4875  3A B9 D5            		ld	a,(ayFX_PRIORITY)		; a:=Current ayFX stream priority
+      94.  01:4878  B7                  		or	a				; If priority has bit 7 on...
+      95.  01:4879  F8                  		ret	m				; ...return
+      96.  01:487A                      		; --- Extract control byte from stream ---
+      97.  01:487A  2A BC D5            		ld	hl,(ayFX_POINTER)		; Pointer to the current ayFX stream
+      98.  01:487D  4E                  		ld	c,(hl)				; c:=Control byte
+      99.  01:487E  23                  		inc	hl				; Increment pointer
+     100.  01:487F                      		; --- Check if there's new tone on stream ---
+     101.  01:487F  CB 69               		bit	5,c				; If bit 5 c is off...
+     102.  01:4881  CA 8C 48            		jp	z,_CHECK_NN			; ...jump to _CHECK_NN (no new tone)
+     103.  01:4884                      		; --- Extract new tone from stream ---
+     104.  01:4884  5E                  		ld	e,(hl)				; e:=lower byte of new tone
+     105.  01:4885  23                  		inc	hl				; Increment pointer
+     106.  01:4886  56                  		ld	d,(hl)				; d:=higher byte of new tone
+     107.  01:4887  23                  		inc	hl				; Increment pointer
+     108.  01:4888  ED 53 BE D5         		ld	(ayFX_TONE),de			; ayFX tone updated
+     109.  01:488C                      _CHECK_NN:	; --- Check if there's new noise on stream ---
+     110.  01:488C  CB 71               		bit	6,c				; if bit 6 c is off...
+     111.  01:488E  CA 9B 48            		jp	z,_SETPOINTER			; ...jump to _SETPOINTER (no new noise)
+     112.  01:4891                      		; --- Extract new noise from stream ---
+     113.  01:4891  7E                  		ld	a,(hl)				; a:=New noise
+     114.  01:4892  23                  		inc	hl				; Increment pointer
+     115.  01:4893  FE 20               		cp	0x20				; If it's an illegal value of noise (used to mark end of stream)...
+     116.  01:4895  CA 23 48            		jp	z,ayFX_END			; ...jump to ayFX_END
+     117.  01:4898  32 C0 D5            		ld	(ayFX_NOISE),a			; ayFX noise updated
+     118.  01:489B                      _SETPOINTER:	; --- Update ayFX pointer ---
+     119.  01:489B  22 BC D5            		ld	(ayFX_POINTER),hl		; Update ayFX stream pointer
+     120.  01:489E                      		; --- Extract volume ---
+     121.  01:489E  79                  		ld	a,c				; a:=Control byte
+     122.  01:489F  E6 0F               		and	0x0F				; lower nibble
+     123.  01:48A1                      		; --- Fix the volume using PT3 Volume Table ---
+     124.  01:48A1  2A C3 D5            		ld	hl,(ayFX_VT)			; hl:=Pointer to relative volume table
+     125.  01:48A4  5F                  		ld	e,a				; e:=a (ayFX volume)
+     126.  01:48A5  16 00               		ld	d,0				; d:=0
+     127.  01:48A7  19                  		add	hl,de				; hl:=hl+de (hl points to the relative volume of this frame
+     128.  01:48A8  7E                  		ld	a,(hl)				; a:=ayFX relative volume
+     129.  01:48A9  32 C1 D5            		ld	(ayFX_VOLUME),a			; ayFX volume updated
+     130.  01:48AC  B7                  		or	a				; If relative volume is zero...
+     131.  01:48AD  C8                  		ret	z				; ...return (don't copy ayFX values in to AYREGS)
+     132.  01:48AE                      		; -------------------------------------
+     133.  01:48AE                      		; --- COPY ayFX VALUES IN TO AYREGS ---
+     134.  01:48AE                      		; -------------------------------------
+     135.  01:48AE                      		; --- Set noise channel ---
+     136.  01:48AE  CB 79               		bit	7,c				; If noise is off...
+     137.  01:48B0  C2 B9 48            		jp	nz,_SETMASKS			; ...jump to _SETMASKS
+     138.  01:48B3  3A C0 D5            		ld	a,(ayFX_NOISE)			; ayFX noise value
+     139.  01:48B6  32 92 D4            		ld	(AYREGS+6),a			; copied in to AYREGS (noise channel)
+     140.  01:48B9                      _SETMASKS:	; --- Set mixer masks ---
+     141.  01:48B9  79                  		ld	a,c				; a:=Control byte
+     142.  01:48BA  E6 90               		and	0x90				; Only bits 7 and 4 (noise and tone mask for psg reg 7)
+     143.  01:48BC  FE 90               		cp	0x90				; If no noise and no tone...
+     144.  01:48BE  C8                  		ret	z				; ...return (don't copy ayFX values in to AYREGS)
+     145.  01:48BF                      		; --- Copy ayFX values in to ARYREGS ---
+     146.  01:48BF  CB 0F               		rrc	a				; Rotate a to the right (1 TIME)
+     147.  01:48C1  CB 0F               		rrc	a				; Rotate a to the right (2 TIMES) (OR mask)
+     148.  01:48C3  16 DB               		ld	d,0xDB				; d:=Mask for psg mixer (AND mask)
+     149.  01:48C5                      		; --- Calculate next ayFX channel ---
+     150.  01:48C5  21 C2 D5            		ld	hl,ayFX_CHANNEL			; Old ayFX playing channel
+     151.  01:48C8  35                  		dec	(hl)				; New ayFX playing channel
+     152.  01:48C9  C2 CE 48            		jp	nz,_SETCHAN			; If not zero jump to _SETCHAN
+     153.  01:48CC  36 02               		ld	(hl),2				; XXX John asks 2 XXX If zero -> set channel 3
+     154.  01:48CE  46                  _SETCHAN:	ld	b,(hl)				; Channel counter
+     155.  01:48CF  04                  		inc	b					; XXX John asks for A & B XXX 
+     156.  01:48D0                      _CHK1:		; --- Check if playing channel was 1 ---
+     157.  01:48D0  10 10               		djnz	_CHK2				; Decrement and jump if channel was not 1
+     158.  01:48D2                      _PLAY_C:	; --- Play ayFX stream on channel C ---
+     159.  01:48D2  CD 0C 49            		call	_SETMIXER			; Set PSG mixer value (a:=ayFX volume)
+     160.  01:48D5  32 96 D4            		ld	(AYREGS+10),a			; Volume copied in to AYREGS (channel C volume)
+     161.  01:48D8  CB 51               		bit	2,c				; If tone is off...
+     162.  01:48DA  C0                  		ret	nz				; ...return
+     163.  01:48DB  2A BE D5            		ld	hl,(ayFX_TONE)			; ayFX tone value
+     164.  01:48DE  22 90 D4            		ld	(AYREGS+4),hl			; copied in to AYREGS (channel C tone)
+     165.  01:48E1  C9                  		ret					; Return
+     166.  01:48E2                      _CHK2:		; --- Check if playing channel was 2 ---
+     167.  01:48E2  CB 0A               		rrc	d				; Rotate right AND mask
+     168.  01:48E4  CB 0F               		rrc	a				; Rotate right OR mask
+     169.  01:48E6  10 10               		djnz	_CHK3				; Decrement and jump if channel was not 2
+     170.  01:48E8                      _PLAY_B:	; --- Play ayFX stream on channel B ---
+     171.  01:48E8  CD 0C 49            		call	_SETMIXER			; Set PSG mixer value (a:=ayFX volume)
+     172.  01:48EB  32 95 D4            		ld	(AYREGS+9),a			; Volume copied in to AYREGS (channel B volume)
+     173.  01:48EE  CB 49               		bit	1,c				; If tone is off...
+     174.  01:48F0  C0                  		ret	nz				; ...return
+     175.  01:48F1  2A BE D5            		ld	hl,(ayFX_TONE)			; ayFX tone value
+     176.  01:48F4  22 8E D4            		ld	(AYREGS+2),hl			; copied in to AYREGS (channel B tone)
+     177.  01:48F7  C9                  		ret					; Return
+     178.  01:48F8                      _CHK3:		; --- Check if playing channel was 3 ---
+     179.  01:48F8  CB 0A               		rrc	d				; Rotate right AND mask
+     180.  01:48FA  CB 0F               		rrc	a				; Rotate right OR mask
+     181.  01:48FC                      _PLAY_A:	; --- Play ayFX stream on channel A ---
+     182.  01:48FC  CD 0C 49            		call	_SETMIXER			; Set PSG mixer value (a:=ayFX volume)
+     183.  01:48FF  32 94 D4            		ld	(AYREGS+8),a			; Volume copied in to AYREGS (channel A volume)
+     184.  01:4902  CB 41               		bit	0,c				; If tone is off...
+     185.  01:4904  C0                  		ret	nz				; ...return
+     186.  01:4905  2A BE D5            		ld	hl,(ayFX_TONE)			; ayFX tone value
+     187.  01:4908  22 8C D4            		ld	(AYREGS+0),hl			; copied in to AYREGS (channel A tone)
+     188.  01:490B  C9                  		ret					; Return
+     189.  01:490C                      _SETMIXER:	; --- Set PSG mixer value ---
+     190.  01:490C  4F                  		ld	c,a				; c:=OR mask
+     191.  01:490D  3A 93 D4            		ld	a,(AYREGS+7)			; a:=PSG mixer value
+     192.  01:4910  A2                  		and	d				; AND mask
+     193.  01:4911  B1                  		or	c				; OR mask
+     194.  01:4912  32 93 D4            		ld	(AYREGS+7),a			; PSG mixer value updated
+     195.  01:4915  3A C1 D5            		ld	a,(ayFX_VOLUME)			; a:=ayFX volume value
+     196.  01:4918  C9                  		ret					; Return
+     197.  01:4919                      
+     198.  01:4919                      		; --- UNCOMMENT THIS IF YOU DON'T USE THIS REPLAYER WITH PT3 REPLAYER ---
+     199.  01:4919                      ; VT_:	INCBIN	"VT.BIN"
+     200.  01:4919                      		; --- UNCOMMENT THIS IF YOU DON'T USE THIS REPLAYER WITH PT3 REPLAYER ---
+     201.  01:4919                      		
+     202.  01:4919                      
+     203.  01:4919                      ; ;struc	AR
+     204.  01:4919                      ; AR_TonA		equ 0	;RESW 1
+     205.  01:4919                      ; AR_TonB		equ 2	;RESW 1
+     206.  01:4919                      ; AR_TonC		equ 4	;RESW 1
+     207.  01:4919                      ; AR_Noise	equ 6	;RESB 1
+     208.  01:4919                      ; AR_Mixer	equ 7	;RESB 1
+     209.  01:4919                      ; AR_AmplA	equ 8	;RESB 1
+     210.  01:4919                      ; AR_AmplB	equ 9	;RESB 1
+     211.  01:4919                      ; AR_AmplC	equ 10	;RESB 1
+     212.  01:4919                      ; AR_Env		equ 11	;RESW 1
+     213.  01:4919                      ; AR_EnvTp	equ 13	;RESB 1
+     214.  01:4919                      ; ;endstruc
+     215.  01:4919                      
+     216.  01:4919                      
+     217.  01:4919                      
+     218.  01:4919                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     219.  01:4919                      
+     263   01:4919                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     264   01:4919                      	INCLUDE SCCaudio.asm
+       1.  01:4919                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       2.  01:4919                      ;
+       3.  01:4919                      ;   Mapper Konami 5 (mapper +  scc)
+       4.  01:4919                      ;
+       5.  01:4919                      ; Bank 1: 5000h - 57FFh (5000h used)
+       6.  01:4919                      ; Bank 2: 7000h - 77FFh (7000h used)
+       7.  01:4919                      ; Bank 3: 9000h - 97FFh (9000h used)
+       8.  01:4919                      ; Bank 4: B000h - B7FFh (B000h used)
+       9.  01:4919                      
+      10.  01:4919  (01:5000)           Bank1   equ      0x5000
+      11.  01:4919  (01:7000)           Bank2   equ      0x7000
+      12.  01:4919  (01:9000)           Bank3   equ      0x9000
+      13.  01:4919  (01:B000)           Bank4   equ      0xB000
+      14.  01:4919                      
+      15.  01:4919                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      16.  01:4919                      ;
+      17.  01:4919                      
+      18.  01:4919                      ; Audio_init_code:
+      19.  01:4919                      
+      20.  01:4919                      ; ; some ayFX init
+      21.  01:4919                      
+      22.  01:4919                          ; call	ayFX_SETUP
+      23.  01:4919                      
+      24.  01:4919                      ; ; some PT3 init
+      25.  01:4919                      
+      26.  01:4919                          ; call    PT3_MUTE
+      27.  01:4919                      
+      28.  01:4919                      ; ; some scc init
+      29.  01:4919                      
+      30.  01:4919                          ; call 	_SCC_PSG_Volume_balance
+      31.  01:4919                      	; ret
+      32.  01:4919                      	
+      33.  01:4919                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      34.  01:4919                      ;
+      35.  01:4919                      ;   compute SCC/PSG Volume balance
+      36.  01:4919                      ;
+      37.  01:4919                      
+      38.  01:4919                      
+      39.  01:4919                      _SCC_PSG_Volume_balance:
+      40.  01:4919                      
+      41.  01:4919  3A 8C D5                ld  a,(_psg_vol_fix)
+      42.  01:491C  C6 0F                   add a,15
+      43.  01:491E  20 01                   jr  nz,1f
+      44.  01:4920  3C                      inc	a
+      45.  01:4921                      1:        
+      46.  01:4921  87                      add	a,a				; a:=a*2
+      47.  01:4922  87                      add	a,a				; a:=a*4
+      48.  01:4923  87                      add	a,a				; a:=a*8
+      49.  01:4924  87                      add	a,a				; a:=a*16
+      50.  01:4925  5F                      ld	e,a				; e:=a
+      51.  01:4926  16 00                   ld	d,0				; de:=a
+      52.  01:4928  21 8C D4                ld	hl,VT_			; hl:=PT3 volume table
+      53.  01:492B  19                      add	hl,de			; hl is a pointer to the relative volume table
+      54.  01:492C                      
+      55.  01:492C  22 91 D5                ld  (_psg_vol_balance),hl
+      56.  01:492F                      		
+      57.  01:492F  3A 8E D5                ld  a,(_scc_vol_fix)
+      58.  01:4932  C6 0F                   add a,15
+      59.  01:4934  20 01                   jr  nz,1f
+      60.  01:4936  3C                      inc	a
+      61.  01:4937                      1:        
+      62.  01:4937  87                      add	a,a				; a:=a*2
+      63.  01:4938  87                      add	a,a				; a:=a*4
+      64.  01:4939  87                      add	a,a				; a:=a*8
+      65.  01:493A  87                      add	a,a				; a:=a*16
+      66.  01:493B  5F                      ld	e,a				; e:=a
+      67.  01:493C  16 00                   ld	d,0				; de:=a
+      68.  01:493E  21 8C D4                ld	hl,VT_			; hl:=PT3 volume table
+      69.  01:4941  19                      add	hl,de			; hl is a pointer to the relative volume table
+      70.  01:4942                      
+      71.  01:4942  22 93 D5                ld  (_scc_vol_balance),hl
+      72.  01:4945  C9                      ret
+      73.  01:4946                      
+      74.  01:4946                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      75.  01:4946                      ;
+      76.  01:4946                      ;   Interrupt handler
+      77.  01:4946                      ;
+      78.  01:4946                      
+      79.  01:4946                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      80.  01:4946                      ; Audio I/O
+      81.  01:4946                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      82.  01:4946                      
+      83.  01:4946                          ; --- Place this instruction on interrupt --- 
+      84.  01:4946                      	; --- or after HALT instruction to synchronize music ---
+      85.  01:4946                      no_music:
+      86.  01:4946  AF                  	xor	a
+      87.  01:4947  67                  	LD	H,A
+      88.  01:4948  6F                  	LD	L,A
+      89.  01:4949  32 94 D4            	LD	( AYREGS+AR_AmplA),A
+      90.  01:494C  32 9D D5            	LD	( AYREGS_CPY+AR_AmplA),A
+      91.  01:494F  22 95 D4            	LD	( AYREGS+AR_AmplB),HL
+      92.  01:4952  22 9E D5            	LD	( AYREGS_CPY+AR_AmplB),HL
+      93.  01:4955  3E BF               	ld  a,010111111B
+      94.  01:4957  32 93 D4            	ld  (AYREGS+AR_Mixer),a
+      95.  01:495A  32 9C D5            	ld  (AYREGS_CPY+AR_Mixer),a
+      96.  01:495D  C3 75 48                jp     ayFX_FRAME			; Calculates PSG values for next frame
+      97.  01:4960                      	
+      98.  01:4960                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      99.  01:4960                      ; Audio Internal code
+     100.  01:4960                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     101.  01:4960                      Audio_Internal_code:
+     102.  01:4960                      
+     103.  01:4960                      ; Only if musics are in ROM
+     104.  01:4960  3A C9 FF            	ld	a,(music_flag)
+     105.  01:4963  A7                  	and	a
+     106.  01:4964  28 E0               	jr	z,no_music
+     107.  01:4966                      
+     108.  01:4966  3E BF                   ld  a,010111111B
+     109.  01:4968  32 93 D4                ld  (AYREGS+7),a
+     110.  01:496B                      	
+     111.  01:496B  08                  	ex	af,af'				; preserve af'
+     112.  01:496C  F5                  	push	af
+     113.  01:496D  CD 7F 45            	call    PT3_PLAY			; Calculates PSG values for next frame
+     114.  01:4970  F1                  	pop		af
+     115.  01:4971  08                  	ex	af,af'
+     116.  01:4972                      	
+     117.  01:4972  21 8C D4                ld      hl,AYREGS
+     118.  01:4975  11 95 D5                ld      de,AYREGS_CPY
+     119.  01:4978  01 0D 00                ld      bc,13
+     120.  01:497B  ED B0                   ldir                        ; save a copy of AY register to avoid that SCCROUT get affected by AYFX
+     121.  01:497D                      1:
+     122.  01:497D                          ; --- PSG/SCC volume balance
+     123.  01:497D                          ; psg attenuation - only for music
+     124.  01:497D                      
+     125.  01:497D  ED 5B 91 D5             ld  de,(_psg_vol_balance)
+     126.  01:4981                         
+     127.  01:4981  2A 94 D4            	ld  hl,(AYREGS+8)
+     128.  01:4984  44                  	ld	b,h
+     129.  01:4985  26 00                   ld  h,0
+     130.  01:4987  19                      add hl,de
+     131.  01:4988  4E                      ld  c,(hl)
+     132.  01:4989                      
+     133.  01:4989  68                      ld  l,b
+     134.  01:498A  26 00                   ld  h,0
+     135.  01:498C  19                      add hl,de
+     136.  01:498D  46                      ld  b,(hl)
+     137.  01:498E  ED 43 94 D4             ld  (AYREGS+8),bc
+     138.  01:4992                          
+     139.  01:4992  3A 96 D4                ld  a,(AYREGS+10)
+     140.  01:4995  6F                  	ld	l,a
+     141.  01:4996  26 00                   ld  h,0
+     142.  01:4998  19                      add hl,de
+     143.  01:4999  7E                      ld  a,(hl)
+     144.  01:499A  32 96 D4                ld  (AYREGS+10),a
+     145.  01:499D                      
+     146.  01:499D                      
+     147.  01:499D                          ; --- PSG/SCC volume balance
+     148.  01:499D                          ; scc attenuation - only for music
+     149.  01:499D                      
+     150.  01:499D  ED 5B 93 D5             ld  de,(_scc_vol_balance)
+     151.  01:49A1                         
+     152.  01:49A1  2A 9D D5                ld  hl,(AYREGS_CPY+8)
+     153.  01:49A4  44                  	ld	b,h
+     154.  01:49A5  26 00                   ld  h,0
+     155.  01:49A7  19                      add hl,de
+     156.  01:49A8  4E                      ld  c,(hl)
+     157.  01:49A9                      
+     158.  01:49A9  68                      ld  l,b
+     159.  01:49AA  26 00                   ld  h,0
+     160.  01:49AC  19                      add hl,de
+     161.  01:49AD  46                      ld  b,(hl)
+     162.  01:49AE  ED 43 9D D5             ld  (AYREGS_CPY+8),bc
+     163.  01:49B2                          
+     164.  01:49B2  3A 9F D5                ld  a,(AYREGS_CPY+10)
+     165.  01:49B5  6F                  	ld	l,a
+     166.  01:49B6  26 00                   ld  h,0
+     167.  01:49B8  19                      add hl,de
+     168.  01:49B9  7E                      ld  a,(hl)
+     169.  01:49BA  32 9F D5                ld  (AYREGS_CPY+10),a
+     170.  01:49BD                          
+     171.  01:49BD                          ; ayFX player section
+     172.  01:49BD                       
+     173.  01:49BD                          ; --- To speed up VDP writes you can place this instruction after all of them, but before next INT ---
+     174.  01:49BD  C3 75 48                jp     ayFX_FRAME			; Calculates PSG values for next frame
+     175.  01:49C0                      
+     176.  01:49C0                      	
+     177.  01:49C0                      ;-------------------------------------
+     178.  01:49C0                      
+     179.  01:49C0                      PT3_ROUT:
+     180.  01:49C0  AF                          XOR A
+     181.  01:49C1                              
+     182.  01:49C1  21 93 D4            		LD	HL,AYREGS+7
+     183.  01:49C4  CB FE               		set	7,(hl)        ; --- FIXES BITS 6 AND 7 OF MIXER ---
+     184.  01:49C6  CB B6               		res	6,(hl)        ; --- FIXES BITS 6 AND 7 OF MIXER ---
+     185.  01:49C8                      
+     186.  01:49C8  0E A0               		LD C,0xA0
+     187.  01:49CA  21 8C D4            		LD HL,AYREGS
+     188.  01:49CD                      _LOUT:
+     189.  01:49CD  ED 79                       OUT (C),A
+     190.  01:49CF  0C                  		INC C
+     191.  01:49D0  ED A3               		OUTI
+     192.  01:49D2  0D                  		DEC C
+     193.  01:49D3  3C                  		INC A
+     194.  01:49D4  FE 0D               		CP 13
+     195.  01:49D6  20 F5               		JR NZ,_LOUT
+     196.  01:49D8  C9                  		RET
+     197.  01:49D9                      
+     198.  01:49D9                      
+     199.  01:49D9                      
+     200.  01:49D9                      
+     201.  01:49D9                      ;-------------------------------------
+     202.  01:49D9                      
+     203.  01:49D9                      
+     204.  01:49D9                      
+     205.  01:49D9                      
+     265   01:49D9                      	INCLUDE SCCWAVES.ASM
+       1.  01:49D9                      
+       2.  01:49D9                      
+       3.  01:49D9                      ;--------------------------------------------------------
+       4.  01:49D9                      _WAVESSCC:                                               ; 15 instruments
+       5.  01:49D9                       
+       6.  01:49D9                      	; empty
+       7.  01:49D9                         	; 01_piano.wav
+       8.  01:49D9                         	; 02_harpsch.wav
+       9.  01:49D9                         	; 03_harp.wav
+      10.  01:49D9                      	; 04_strgs.wav
+      11.  01:49D9                         	; 05_slwstr.wav
+      12.  01:49D9                         	; 06_flute.wav
+      13.  01:49D9                      	; incbin "sccwavestouse\04_ldtrump.bin"
+      14.  01:49D9                      	; incbin "sccwavestouse\05_lead.bin"
+      15.  01:49D9                      	; incbin "sccwavestouse\06_orgue.bin"
+      16.  01:49D9                          ; 07_fltvib.wav
+      17.  01:49D9                          ; 08_trmpt.wav
+      18.  01:49D9                          ; 09_strpzz.wav
+      19.  01:49D9                          ; 10_clst.wav
+      20.  01:49D9                          ; 11_mrmb.wav
+      21.  01:49D9                          ; 12_vln.wav
+      22.  01:49D9                          ; 13_vlnvb.wav
+      23.  01:49D9                          ; 14_snrdr.wav
+      24.  01:49D9                      	; 15_aaaaaaa.wav
+      25.  01:49D9                      	; incbin "sccwavestouse\13_bass1.bin"
+      26.  01:49D9                      	; incbin "sccwavestouse\14_scbass.bin"
+      27.  01:49D9                      	; incbin "sccwavestouse\15_venbass.bin"
+      28.  01:49D9                      	
+      29.  01:49D9                      	; same as above but included as text
+      30.  01:49D9                          db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+      30.  01:49D9  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+      31.  01:49E9                          db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+      31.  01:49E9  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+      32.  01:49F9                          db 0xF2,0xEB,0xEA,0xD1,0xDB,0xD5,0xDB,0xCD,0xCA,0xEE,0xE1,0x06,0x04,0x0A,0x11,0x1A
+      32.  01:49F9  F2 EB EA D1 DB D5 DB CD CA EE E1 06 04 0A 11 1A 
+      33.  01:4A09                          db 0x08,0xFE,0x08,0xFF,0x05,0x15,0x1B,0x1B,0x35,0x36,0x1F,0x2E,0x26,0x07,0xFE,0xF0
+      33.  01:4A09  08 FE 08 FF 05 15 1B 1B 35 36 1F 2E 26 07 FE F0 
+      34.  01:4A19                          db 0x2B,0x1E,0x0F,0x0B,0xFA,0xF8,0xEC,0xEA,0xED,0xFB,0x02,0xF8,0x03,0xF8,0xED,0xF2
+      34.  01:4A19  2B 1E 0F 0B FA F8 EC EA ED FB 02 F8 03 F8 ED F2 
+      35.  01:4A29                          db 0xEF,0xE7,0xFD,0xF6,0x0E,0x0B,0x00,0x08,0xEF,0xDF,0xF0,0xE5,0x01,0x21,0x2F,0x3A
+      35.  01:4A29  EF E7 FD F6 0E 0B 00 08 EF DF F0 E5 01 21 2F 3A 
+      36.  01:4A39                          db 0x3B,0x3B,0x32,0x26,0x19,0x0F,0xFE,0xEA,0xDA,0xCD,0xD1,0xDF,0xE4,0xE9,0xF5,0x03
+      36.  01:4A39  3B 3B 32 26 19 0F FE EA DA CD D1 DF E4 E9 F5 03 
+      37.  01:4A49                          db 0x17,0x2D,0x3A,0x39,0x28,0x0D,0xF5,0xDF,0xD0,0xC8,0xC1,0xC7,0xE0,0xFE,0x1B,0x31
+      37.  01:4A49  17 2D 3A 39 28 0D F5 DF D0 C8 C1 C7 E0 FE 1B 31 
+      38.  01:4A59                          db 0x00,0xF0,0xE0,0xD0,0xC0,0xB0,0xA0,0x90,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80
+      38.  01:4A59  00 F0 E0 D0 C0 B0 A0 90 80 80 80 80 80 80 80 80 
+      39.  01:4A69                          db 0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x7F,0x70,0x60,0x50,0x40,0x30,0x20,0x10
+      39.  01:4A69  80 80 80 80 80 80 80 80 7F 70 60 50 40 30 20 10 
+      40.  01:4A79                          db 0xAA,0xAA,0xAA,0xAA,0xEE,0xEE,0xEE,0xEE,0xEE,0xFF,0xFF,0xFF,0xFF,0xCC,0xCC,0xCC
+      40.  01:4A79  AA AA AA AA EE EE EE EE EE FF FF FF FF CC CC CC 
+      41.  01:4A89                          db 0xCC,0xC5,0x55,0x55,0x55,0x77,0x77,0x77,0x77,0x88,0x88,0x88,0x88,0x88,0x88,0x88
+      41.  01:4A89  CC C5 55 55 55 77 77 77 77 88 88 88 88 88 88 88 
+      42.  01:4A99                          db 0x00,0x68,0x48,0x18,0x48,0x68,0x28,0x00,0x48,0x77,0x58,0x08,0x28,0x38,0x00,0xB8
+      42.  01:4A99  00 68 48 18 48 68 28 00 48 77 58 08 28 38 00 B8 
+      43.  01:4AA9                          db 0x08,0x58,0x00,0xE8,0xF8,0x00,0xB8,0x98,0xC8,0x08,0xE8,0xA8,0xC8,0xF8,0xC8,0xA8
+      43.  01:4AA9  08 58 00 E8 F8 00 B8 98 C8 08 E8 A8 C8 F8 C8 A8 
+      44.  01:4AB9                          db 0x3B,0x3F,0x3C,0x2F,0x1E,0x10,0x0A,0x08,0x04,0x00,0xFA,0xF4,0xF0,0xF2,0xF6,0xF8
+      44.  01:4AB9  3B 3F 3C 2F 1E 10 0A 08 04 00 FA F4 F0 F2 F6 F8 
+      45.  01:4AC9                          db 0xF7,0xF0,0xE8,0xE1,0xDB,0xD7,0xD0,0xCB,0xCE,0xD9,0xEA,0xFF,0x11,0x21,0x2E,0x37
+      45.  01:4AC9  F7 F0 E8 E1 DB D7 D0 CB CE D9 EA FF 11 21 2E 37 
+      46.  01:4AD9                          db 0x00,0x00,0xFE,0xFF,0x01,0x03,0x06,0x04,0xFF,0xFA,0xF0,0xE4,0xDB,0xDC,0xFA,0x29
+      46.  01:4AD9  00 00 FE FF 01 03 06 04 FF FA F0 E4 DB DC FA 29 
+      47.  01:4AE9                          db 0xC0,0x23,0x01,0x03,0x04,0x05,0x00,0xFC,0xFC,0xFF,0x02,0x01,0xF8,0xF5,0xF8,0xFD
+      47.  01:4AE9  C0 23 01 03 04 05 00 FC FC FF 02 01 F8 F5 F8 FD 
+      48.  01:4AF9                          db 0xF3,0x04,0x1B,0x17,0x10,0x17,0x14,0x16,0x16,0x04,0xFE,0xE7,0xD5,0xD7,0xD8,0xE6
+      48.  01:4AF9  F3 04 1B 17 10 17 14 16 16 04 FE E7 D5 D7 D8 E6 
+      49.  01:4B09                          db 0xF3,0x01,0x1B,0x2B,0x3A,0x3A,0x26,0x17,0x05,0xEC,0xDD,0xE0,0xE0,0xDE,0xE2,0xE5
+      49.  01:4B09  F3 01 1B 2B 3A 3A 26 17 05 EC DD E0 E0 DE E2 E5 
+      50.  01:4B19                          db 0xF0,0x07,0x17,0x1F,0x2E,0x23,0x2B,0x18,0x0E,0x05,0xE6,0xE4,0xD6,0xCF,0xD7,0xDD
+      50.  01:4B19  F0 07 17 1F 2E 23 2B 18 0E 05 E6 E4 D6 CF D7 DD 
+      51.  01:4B29                          db 0xEF,0x03,0x0D,0x20,0x23,0x2D,0x2B,0x20,0x1A,0x00,0xF7,0xE4,0xD4,0xD6,0xD1,0xDD
+      51.  01:4B29  EF 03 0D 20 23 2D 2B 20 1A 00 F7 E4 D4 D6 D1 DD 
+      52.  01:4B39                          db 0xFE,0xD6,0xC1,0xCB,0xDD,0xE4,0xDD,0xD3,0xD1,0xD2,0xD4,0xDB,0xE5,0xE8,0xE9,0xF6
+      52.  01:4B39  FE D6 C1 CB DD E4 DD D3 D1 D2 D4 DB E5 E8 E9 F6 
+      53.  01:4B49                          db 0x0A,0x10,0x00,0xF9,0x0C,0x20,0x20,0x20,0x2E,0x34,0x25,0x13,0x0D,0x0F,0x07,0xF3
+      53.  01:4B49  0A 10 00 F9 0C 20 20 20 2E 34 25 13 0D 0F 07 F3 
+      54.  01:4B59                          db 0x06,0xD8,0x00,0x0F,0xF1,0xDB,0xEF,0x03,0x0C,0x2E,0xF5,0x17,0x14,0xE5,0x06,0x15
+      54.  01:4B59  06 D8 00 0F F1 DB EF 03 0C 2E F5 17 14 E5 06 15 
+      55.  01:4B69                          db 0xD4,0xE4,0xD3,0xD3,0x12,0x01,0xF5,0x31,0x13,0xF6,0x25,0x20,0x0F,0x13,0xDF,0xF4
+      55.  01:4B69  D4 E4 D3 D3 12 01 F5 31 13 F6 25 20 0F 13 DF F4 
+      56.  01:4B79                          db 0x80,0x8E,0xA0,0xC0,0xE0,0x00,0x20,0x3F,0x3E,0x3C,0x3A,0x37,0x31,0x29,0x20,0x1C
+      56.  01:4B79  80 8E A0 C0 E0 00 20 3F 3E 3C 3A 37 31 29 20 1C 
+      57.  01:4B89                          db 0x10,0x00,0xE6,0xC0,0xD0,0x00,0x20,0x3F,0x10,0xE0,0x80,0xC0,0x00,0x20,0x00,0x90
+      57.  01:4B89  10 00 E6 C0 D0 00 20 3F 10 E0 80 C0 00 20 00 90 
+      58.  01:4B99                          db 0xF0,0xB0,0xA0,0x98,0xAE,0x8A,0x86,0x94,0x80,0x90,0x80,0xAC,0xA6,0xAC,0xC2,0xDC
+      58.  01:4B99  F0 B0 A0 98 AE 8A 86 94 80 90 80 AC A6 AC C2 DC 
+      59.  01:4BA9                          db 0xEC,0x14,0x36,0x6C,0x6A,0x7E,0x6A,0x7F,0x72,0x4C,0x22,0x36,0x42,0x18,0x30,0x08
+      59.  01:4BA9  EC 14 36 6C 6A 7E 6A 7F 72 4C 22 36 42 18 30 08 
+      60.  01:4BB9                          db 0x00,0x40,0x7F,0x40,0x01,0xC0,0x81,0xC0,0x01,0x40,0x7F,0x40,0x01,0xC0,0x01,0x40
+      60.  01:4BB9  00 40 7F 40 01 C0 81 C0 01 40 7F 40 01 C0 01 40 
+      61.  01:4BC9                          db 0x01,0xE0,0x01,0x20,0x01,0xF0,0x01,0x10,0x01,0xFF,0xFF,0xFF,0xFF,0x40,0x40,0x40
+      61.  01:4BC9  01 E0 01 20 01 F0 01 10 01 FF FF FF FF 40 40 40 
+      62.  01:4BD9                      
+      63.  01:4BD9                      
+      64.  01:4BD9                      
+      65.  01:4BD9                      ;-------------------------------------
+      66.  01:4BD9                      ;  scc echoes for PT3
+      67.  01:4BD9                      ;-------------------------------------
+      68.  01:4BD9  (01:9880)           SCC_REG     EQU 009880h           ;SCC ADDRESS FUNCTION
+      69.  01:4BD9                      
+      70.  01:4BD9                      SCCROUT:
+      71.  01:4BD9                              ;Frequencies
+      72.  01:4BD9                      		
+      73.  01:4BD9                      		; call en_scc
+      74.  01:4BD9                      		; ret	z
+      75.  01:4BD9  3E 3F                       ld  a,03Fh
+      76.  01:4BDB  32 00 90                    ld  (Bank3),a
+      77.  01:4BDE                      
+      78.  01:4BDE  2A 95 D5                    LD  HL,(AYREGS_CPY+0)       ; A-> ch 1 
+      79.  01:4BE1  22 80 98                    LD  (SCC_REG+0),HL
+      80.  01:4BE4  2A 97 D5                    LD  HL,(AYREGS_CPY+2)       ; C-> ch 2
+      81.  01:4BE7  22 82 98                    LD  (SCC_REG+2),HL
+      82.  01:4BEA  2A 99 D5                    LD  HL,(AYREGS_CPY+4)       ; B-> ch 3
+      83.  01:4BED  22 84 98                    LD  (SCC_REG+4),HL
+      84.  01:4BF0                      
+      85.  01:4BF0                      		;VOLUMES
+      86.  01:4BF0                      
+      87.  01:4BF0  3A 9D D5                    ld      a,(AYREGS_CPY+8)
+      88.  01:4BF3  32 8A 98                    ld      (SCC_REG+0x0A),a    ; A-> ch 1 
+      89.  01:4BF6  3A 9E D5                    ld      a,(AYREGS_CPY+9)
+      90.  01:4BF9  32 8B 98                    LD      (SCC_REG+0x0B),A    ; C-> ch 2
+      91.  01:4BFC  3A 9F D5                    ld      a,(AYREGS_CPY+10)
+      92.  01:4BFF  32 8C 98                    LD      (SCC_REG+0x0C),A    ; B-> ch 3
+      93.  01:4C02                      
+      94.  01:4C02                      		;MIXER
+      95.  01:4C02                      
+      96.  01:4C02  3A 9C D5                    ld      a,(AYREGS_CPY+7)
+      97.  01:4C05  EE 07                       xor     7        
+      98.  01:4C07  E6 07                       and     7
+      99.  01:4C09  32 8F 98                    ld      (SCC_REG+0x0F),a
+     100.  01:4C0C                      
+     101.  01:4C0C                      		; call en_slot
+     102.  01:4C0C  C9                          RET
+     103.  01:4C0D                      
+     104.  01:4C0D                      
+     105.  01:4C0D                      ;-------------------------------------
+     106.  01:4C0D                      ; A-> ch 1 
+     107.  01:4C0D                      ; B-> ch 2
+     108.  01:4C0D                      ; C-> ch 3
+     109.  01:4C0D                      
+     110.  01:4C0D                      
+     111.  01:4C0D                      ; setsccwaves:
+     112.  01:4C0D                          ; di
+     113.  01:4C0D                      	; call en_scc
+     114.  01:4C0D                      	; ret	z
+     115.  01:4C0D                      	
+     116.  01:4C0D                          ; ld      a,3fh
+     117.  01:4C0D                          ; ld      (Bank3),a
+     118.  01:4C0D                      
+     119.  01:4C0D                          ; ld      de,0x09800
+     120.  01:4C0D                          ; ld      a,(wchA)                            ; A->ch1
+     121.  01:4C0D                          ; call    sccchan                             
+     122.  01:4C0D                      
+     123.  01:4C0D                          ; ld      a,(wchB)                            ; B->ch2
+     124.  01:4C0D                          ; call    sccchan
+     125.  01:4C0D                      
+     126.  01:4C0D                          ; ld      a,(wchC)                            ; C->ch3
+     127.  01:4C0D                          ; call    sccchan
+     128.  01:4C0D                      
+     129.  01:4C0D                         	; call en_slot
+     130.  01:4C0D                      	; ret
+     131.  01:4C0D                      
+     132.  01:4C0D                      
+     133.  01:4C0D                      probewavechanges:
+     134.  01:4C0D                         	; call en_scc
+     135.  01:4C0D                      	; ret	z
+     136.  01:4C0D  D9                  	exx
+     137.  01:4C0E  E5                  	push   hl         
+     138.  01:4C0F  D5                  	push   de         
+     139.  01:4C10                      
+     140.  01:4C10  21 A5 D5            	ld  hl,OSmplA
+     141.  01:4C13                      
+     142.  01:4C13  3A 49 D4            	ld  a,(ChanA+29)
+     143.  01:4C16  BE                  	cp  (hl)
+     144.  01:4C17  C4 2E 4C            	call  nz,changeA
+     145.  01:4C1A                      
+     146.  01:4C1A  23                  	inc hl
+     147.  01:4C1B  3A 67 D4            	ld  a,(ChanB+29)
+     148.  01:4C1E  BE                  	cp  (hl)
+     149.  01:4C1F  C4 3B 4C            	call  nz,changeB
+     150.  01:4C22                      
+     151.  01:4C22  23                  	inc hl
+     152.  01:4C23  3A 85 D4            	ld  a,(ChanC+29)
+     153.  01:4C26  BE                  	cp  (hl)
+     154.  01:4C27  C4 48 4C            	call  nz,changeC
+     155.  01:4C2A                      
+     156.  01:4C2A  D1                  	pop    de         
+     157.  01:4C2B  E1                  	pop    hl         
+     158.  01:4C2C  D9                  	exx               
+     159.  01:4C2D                      
+     160.  01:4C2D                      	; call en_slot
+     161.  01:4C2D  C9                      ret
+     162.  01:4C2E                      
+     163.  01:4C2E                      
+     164.  01:4C2E                      changeA:
+     165.  01:4C2E  77                      ld      (hl),a
+     166.  01:4C2F  CD 6C 4C                call    samp2wav
+     167.  01:4C32  32 A2 D5                ld      (wchA),a
+     168.  01:4C35  11 00 98                ld      de,0x09800                      ; A->ch1
+     169.  01:4C38  C3 52 4C                jp      1f
+     170.  01:4C3B                          
+     171.  01:4C3B                      changeB:
+     172.  01:4C3B  77                      ld      (hl),a
+     173.  01:4C3C  CD 6C 4C                call    samp2wav
+     174.  01:4C3F  32 A3 D5                ld      (wchB),a
+     175.  01:4C42  11 20 98                ld      de,0x09800+32*1                 ; B->ch2
+     176.  01:4C45  C3 52 4C                jp      1f
+     177.  01:4C48                      
+     178.  01:4C48                      changeC:
+     179.  01:4C48  77                      ld      (hl),a
+     180.  01:4C49  CD 6C 4C                call    samp2wav
+     181.  01:4C4C  32 A4 D5                ld      (wchC),a
+     182.  01:4C4F  11 40 98                ld      de,0x09800+32*2                 ; C->ch3
+     183.  01:4C52                      
+     184.  01:4C52                      1:
+     185.  01:4C52  4F                      ld      c,a
+     186.  01:4C53  3E 3F                   ld      a,3fh
+     187.  01:4C55  32 00 90                ld      (Bank3),a
+     188.  01:4C58  79                      ld      a,c
+     189.  01:4C59                      
+     190.  01:4C59                      sccchan:
+     191.  01:4C59  E5                      push    hl
+     192.  01:4C5A  6F                      ld      l,a
+     193.  01:4C5B  26 00                   ld      h,0
+     194.  01:4C5D  29 29 29 29         [4]	add     hl,hl
+     195.  01:4C61  01 D9 49                ld      bc, _WAVESSCC
+     196.  01:4C64  09                      add     hl,bc
+     197.  01:4C65  01 20 00                ld      bc,32
+     198.  01:4C68  ED B0                   ldir
+     199.  01:4C6A  E1                      pop     hl
+     200.  01:4C6B  C9                      ret
+     201.  01:4C6C                      
+     202.  01:4C6C                      
+     203.  01:4C6C                      
+     204.  01:4C6C                      
+     205.  01:4C6C                      samp2wav:
+     206.  01:4C6C  D9                  	exx
+     207.  01:4C6D  21 A8 D5            	ld hl,_waves
+     208.  01:4C70  0F                  	rrca
+     209.  01:4C71  5F                  	ld e,a
+     210.  01:4C72  16 00               	ld d,0
+     211.  01:4C74  19                  	add   hl,de
+     212.  01:4C75  7E                  	ld    a,(hl)
+     213.  01:4C76  87                  	add   a,a
+     214.  01:4C77  D9                  	exx
+     215.  01:4C78  C9                  	ret
+     216.  01:4C79                           
+     217.  01:4C79                      en_scc:
+     218.  01:4C79  3A C7 FF            	ld	a,[SCC]
+     219.  01:4C7C  3C                  	inc	a
+     220.  01:4C7D  C8                  	ret	z			; no scc
+     221.  01:4C7E  DB A8               	in	a,(0xA8)	; Leemos el registro principal de slots
+     222.  01:4C80  32 C8 FF            	ld	(curslot),a	; save it
+     223.  01:4C83  5F                  	ld	e,a
+     224.  01:4C84  3A C7 FF            	ld	a,(SCC)
+     225.  01:4C87  E6 03               	and	0x03		; Nos fijamos en el slot primario
+     226.  01:4C89  87 87 87 87         [4]	add	a,a
+     227.  01:4C8D  57                  	ld	d,a
+     228.  01:4C8E  7B                  	ld	a,e			; registro principal de slots
+     229.  01:4C8F  E6 CF               	and	11001111b
+     230.  01:4C91  B2                  	or	d
+     231.  01:4C92  D3 A8               	out (0xA8),a
+     232.  01:4C94  C9                  	ret
+     233.  01:4C95                      	
+     234.  01:4C95                      en_slot:
+     235.  01:4C95  3A C8 FF            	ld	a,(curslot)
+     236.  01:4C98  D3 A8               	out (0xA8),a
+     237.  01:4C9A  C9                  	ret
+     266   01:4C9B                      	INCLUDE SCCDETEC.ASM
+       1.  01:4C9B                      ;------------------------------------------------------------
+       2.  01:4C9B                      ; SCC-search v1.0
+       3.  01:4C9B                      ; by Alwin Henseler
+       4.  01:4C9B                      ; using method described in bulletin # 18 MSX-club Enschede
+       5.  01:4C9B                      ; input: none
+       6.  01:4C9B                      ; output: B=slot that contains SCC (=255 if no SCC found)
+       7.  01:4C9B                      
+       8.  01:4C9B                      ; enaslt:          equ #0024
+       9.  01:4C9B                      ; exptbl:          equ #fcc1
+      10.  01:4C9B                      ; slttbl:          equ #fcc5
+      11.  01:4C9B                      
+      12.  01:4C9B                      
+      13.  01:4C9B                      
+      14.  01:4C9B                      
+      15.  01:4C9B                      begin:
+      16.  01:4C9B  (C000)              	MAP #c000
+      17.  01:4C9B  DB A8               	in a,(#a8)        ; read prim. slotregister
+      18.  01:4C9D  1F                  	rra
+      19.  01:4C9E  1F                  	rra
+      20.  01:4C9F  1F                  	rra
+      21.  01:4CA0  1F                  	rra
+      22.  01:4CA1  E6 03               	and %00000011     ; A = prim.slot page 2
+      23.  01:4CA3  06 00               	ld b,0
+      24.  01:4CA5  4F                  	ld c,a
+      25.  01:4CA6  21 C1 FC            	ld hl,exptbl
+      26.  01:4CA9  09                  	add hl,bc
+      27.  01:4CAA  CB 7E               	bit 7,(hl)        ; page 2-slot expanded ?
+      28.  01:4CAC  28 0C               	jr z,scctest
+      29.  01:4CAE  21 C5 FC            	ld hl,slttbl
+      30.  01:4CB1  09                  	add hl,bc
+      31.  01:4CB2  7E                  	ld a,(hl)         ; A = sec.sel.reg. of page 2-slot
+      32.  01:4CB3  1F                  	rra
+      33.  01:4CB4  1F                  	rra
+      34.  01:4CB5  E6 0C               	and %00001100     ; bit 1/2 = sec.slot page 2
+      35.  01:4CB7  B1                  	or c
+      36.  01:4CB8  CB FF               	set 7,a           ; compose sec.slot-code
+      37.  01:4CBA                      scctest:
+      38.  01:4CBA  F5                  	push af           ; save page 2-slot on the stack
+      39.  01:4CBB  3A C1 FC            	ld a,(exptbl)     ; 1st slot to test
+      40.  01:4CBE                      
+      41.  01:4CBE                      testslot:        
+      42.  01:4CBE  F5                  	push af           ; save test-slot on the stack
+      43.  01:4CBF  26 80               	ld h,#80
+      44.  01:4CC1  CD 24 00            	call enaslt       ; switch slot-to-test in 8000-bfffh
+      45.  01:4CC4  AF                  	xor	a
+      46.  01:4CC5  32 FE BF            	ld (0xbffe),a	  ; scc+ patch for bluemsx
+      47.  01:4CC8  21 00 90            	ld hl,#9000
+      48.  01:4CCB  46                  	ld b,(hl)         ; save contents of address 9000h
+      49.  01:4CCC  36 3F               	ld (hl),#3f       ; activate SCC (if present)
+      50.  01:4CCE  26 9C               	ld h,#9c          ; address of SCC-register mirrors
+      51.  01:4CD0  11 00 98            	ld de,#9800       ; 9800h = address of SCC-registers
+      52.  01:4CD3                      testreg:         
+      53.  01:4CD3  1A                  	ld a,(de)
+      54.  01:4CD4  4F                  	ld c,a            ; save contents of address 98xxh
+      55.  01:4CD5  7E                  	ld a,(hl)         ; read byte from address 9cxxh
+      56.  01:4CD6  2F                  	cpl               ; and invert it
+      57.  01:4CD7  12                  	ld (de),a         ; write inverted byte to 98xxh
+      58.  01:4CD8  BE                  	cp (hl)           ; same value on 9cxxh ?
+      59.  01:4CD9  79                  	ld a,c
+      60.  01:4CDA  12                  	ld (de),a         ; restore value on 98xxh
+      61.  01:4CDB  20 0D               	jr nz,nextslot    ; unequal -> no SCC -> continue search
+      62.  01:4CDD  23                  	inc hl
+      63.  01:4CDE  13                  	inc de            ; next test-addresses
+      64.  01:4CDF  CB 7D               	bit 7,l           ; 128 addresses (registers) tested ?
+      65.  01:4CE1  28 F0               	jr z,testreg      ; no -> repeat mirror-test
+      66.  01:4CE3  78                  	ld a,b
+      67.  01:4CE4  32 00 90            	ld (#9000),a      ; restore value on 9000h
+      68.  01:4CE7  C1                  	pop bc            ; retrieve slotcode (=SCC-slot) from stack
+      69.  01:4CE8  18 24               	jr done           ; SCC found, restore page 2-slot & return
+      70.  01:4CEA                      
+      71.  01:4CEA                      nextslot:
+      72.  01:4CEA  78                  	ld a,b
+      73.  01:4CEB  32 00 90            	ld (#9000),a      ; restore value on 9000h
+      74.  01:4CEE  C1                  	pop bc            ; retrieve slotcode from stack
+      75.  01:4CEF  CB 78               	bit 7,b           ; test-slot = sec.slot ?
+      76.  01:4CF1  28 07               	jr z,nextprim
+      77.  01:4CF3  78                  	ld a,b
+      78.  01:4CF4  C6 04               	add a,4           ; increase sec.slotnumber
+      79.  01:4CF6  CB 67               	bit 4,a           ; sec.slot = 4 ?
+      80.  01:4CF8  28 C4               	jr z,testslot
+      81.  01:4CFA                      nextprim:
+      82.  01:4CFA  78                  	ld a,b
+      83.  01:4CFB  E6 03               	and %00000011
+      84.  01:4CFD  FE 03               	cp 3              ; prim.slot = 3 ?
+      85.  01:4CFF  28 0B               	jr z,noscc
+      86.  01:4D01  3C                  	inc a             ; increase prim.slotnumber
+      87.  01:4D02  16 00               	ld d,0
+      88.  01:4D04  5F                  	ld e,a
+      89.  01:4D05  21 C1 FC            	ld hl,exptbl
+      90.  01:4D08  19                  	add hl,de
+      91.  01:4D09  B6                  	or (hl)           ; combine slot-expansion with slotcode
+      92.  01:4D0A  18 B2               	jr testslot
+      93.  01:4D0C                      
+      94.  01:4D0C                      noscc:           
+      95.  01:4D0C  06 FF               	ld b,255          ; code for no SCC
+      96.  01:4D0E                      done:            
+      97.  01:4D0E  F1                  	pop af            ; retrieve page 2-slot from stack
+      98.  01:4D0F  C5                  	push bc
+      99.  01:4D10  26 80               	ld h,#80
+     100.  01:4D12  CD 24 00            	call enaslt       ; restore original page 2-slot
+     101.  01:4D15  C1                  	pop bc
+     102.  01:4D16  FB                  	ei
+     103.  01:4D17  C9                  	ret
+     104.  01:4D18                      end:
+     105.  01:4D18  (0000)              	endmap				 
+     106.  01:4D18                      ; -------------------------------------------------------------
+     107.  01:4D18                      
+     108.  01:4D18                      
+     109.  01:4D18                      ; ====================
+     110.  01:4D18                      ;    Initialization
+     111.  01:4D18                      ; ====================
+     112.  01:4D18                      SCCINIT
+     113.  01:4D18  21 9B 4C            	ld	hl,begin
+     114.  01:4D1B  11 00 C0            	ld	de,0C000H
+     115.  01:4D1E  01 7E 00            	ld	bc,end-begin+1
+     116.  01:4D21  ED B0               	ldir
+     117.  01:4D23  CD 00 C0            	call	0C000H
+     118.  01:4D26  78                  	ld	a,b
+     119.  01:4D27  32 C7 FF            	ld	(SCC),a
+     120.  01:4D2A  C9                  	ret
+     121.  01:4D2B                      
+     122.  01:4D2B                      ; SLOT            .db     0
+     123.  01:4D2B                      ; PAGE1RAM        .db     0
+     124.  01:4D2B                      ; RAMSLOT         .db     0
+     125.  01:4D2B                      
+     126.  01:4D2B                      ; SCC             .db     0
+     127.  01:4D2B                      ; SUB             .db     0FFH
+     128.  01:4D2B                      
+     267   01:4D2B                      mus_mute:
+     268   01:4D2B  00 (16)                 ds 16,0
+     269   01:4D3B  (0074)              	incbin UR_mute.BIN
+     270   01:4DAF                      initmain:
+     271   01:4DAF  3A E0 F3            	ld	a,(_vdpReg+1)
+     272   01:4DB2  F6 02               	or 2
+     273   01:4DB4  32 E0 F3            	ld	(_vdpReg+1),a
+     274   01:4DB7                      	
+     275   01:4DB7  3E 03               	ld	a,3
+     276   01:4DB9  CD 5F 00            	call 0x005f
+     277   01:4DBC  31 80 F3            	ld sp,0F380h		; place manually the stack
+     278   01:4DBF                      
+     279   01:4DBF  F3                  	di
+     280   01:4DC0  CD 36 40            	call	search_slotram	; look for the ram slot 
+     281   01:4DC3  CD 17 40            	call	search_slot		; look for the slot of our rom
+     282   01:4DC6                      
+     283   01:4DC6  3A C6 FF            	ld	a,(slotram)
+     284   01:4DC9  ED 47               	ld	i,a					; save for later use
+     285   01:4DCB                      	
+     286   01:4DCB                      	;---------------------
+     287   01:4DCB  CD 68 40            	call	setrampage2		; set ram in page 2
+     288   01:4DCE  31 00 C0            	ld sp,0C000h			; place manually the stack
+     289   01:4DD1  CD 6E 40            	call	setrompage3		; set rom in page 3 <- old ram data cannot be accessed
+     290   01:4DD4                      	;---------------------
+     291   01:4DD4                      
+     292   01:4DD4  21 00 C0            	ld	hl,0xC000			; now page 3 is in 0x8000-0xBFFF
+     293   01:4DD7  11 00 80            	ld	de,0x8000
+     294   01:4DDA  01 00 40            	ld	bc,0x4000
+     295   01:4DDD  ED B0               	ldir
+     296   01:4DDF                      	
+     297   01:4DDF                      	;---------------------
+     298   01:4DDF  ED 57               	ld		a,i				; recover ram in page 3
+     299   01:4DE1  CD 3A 41            	call	setslotpage3	; NB two bytes at the end of the page get corrupted by this call!
+     300   01:4DE4  31 80 F3            	ld sp,0F380h			; place manually the stack
+     301   01:4DE7  CD 62 40            	call	setrompage2		; set rom in page 2
+     302   01:4DEA                      	;---------------------
+     303   01:4DEA                      	
+     304   01:4DEA  (01:4062)           enpage2 equ	setrompage2
+     305   01:4DEA  (01:4068)           enpage3 equ	setrampage2
+     306   01:4DEA                      
+     307   01:4DEA  CD 5C 40            	call	setrompage0		; 48K of rom are active - bios is excluded
+     308   01:4DED                      							; from here interrupts are disabled
+     309   01:4DED  CD 67 30            	call	vraminit
+     310   01:4DF0                      	
+     311   01:4DF0                      	setVdp 7,0x00;	VDP(7)=0:
+     311   01:4DF0  F3                >  di
+     311   01:4DF1                    >  _setVdp register,value
+     311   01:4DF1                    >  
+     311   01:4DF1  3E 00             >   ld a,value
+     311   01:4DF3                    >  
+     311   01:4DF3  D3 99             >  out (0x99),a
+     311   01:4DF5  3E 87             >  ld a,register + 0x80
+     311   01:4DF7  D3 99             >  out (0x99),a
+     311   01:4DF9  FB                >  ei
+     312   01:4DFA                      	
+     313   01:4DFA                      	setVdp 2,0x00;	VDP(2)=0:
+     313   01:4DFA  F3                >  di
+     313   01:4DFB                    >  _setVdp register,value
+     313   01:4DFB                    >  
+     313   01:4DFB  3E 00             >   ld a,value
+     313   01:4DFD                    >  
+     313   01:4DFD  D3 99             >  out (0x99),a
+     313   01:4DFF  3E 82             >  ld a,register + 0x80
+     313   01:4E01  D3 99             >  out (0x99),a
+     313   01:4E03  FB                >  ei
+     314   01:4E04                      	setVdp 5,0x06;	VDP(5)=&H06:'SAT = &H0300
+     314   01:4E04  F3                >  di
+     314   01:4E05                    >  _setVdp register,value
+     314   01:4E05                    >  
+     314   01:4E05  3E 06             >   ld a,value
+     314   01:4E07                    >  
+     314   01:4E07  D3 99             >  out (0x99),a
+     314   01:4E09  3E 85             >  ld a,register + 0x80
+     314   01:4E0B  D3 99             >  out (0x99),a
+     314   01:4E0D  FB                >  ei
+     315   01:4E0E                      	setVdp 6,0x07;	VDP(6)=7:	'SPT = &h3800
+     315   01:4E0E  F3                >  di
+     315   01:4E0F                    >  _setVdp register,value
+     315   01:4E0F                    >  
+     315   01:4E0F  3E 07             >   ld a,value
+     315   01:4E11                    >  
+     315   01:4E11  D3 99             >  out (0x99),a
+     315   01:4E13  3E 86             >  ld a,register + 0x80
+     315   01:4E15  D3 99             >  out (0x99),a
+     315   01:4E17  FB                >  ei
+     316   01:4E18                      	
+     317   01:4E18                      	;VPOKE &H0300,&HD0
+     318   01:4E18                      	setvdpwvram 0x0300
+     318   01:4E18  F3                >  di
+     318   01:4E19                    >  _setvdpwvram value
+     318   01:4E19                    >  if (value & 0xFF)
+     318   01:4E19                    ~   ld a,value & 0xFF
+     318   01:4E19                    ~  else
+     318   01:4E19  AF                >   xor a
+     318   01:4E1A                    >  endif
+     318   01:4E1A  D3 99             >  out (0x99),a
+     318   01:4E1C  3E 43             >  ld a,0x40 + (value/256)
+     318   01:4E1E  D3 99             >  out (0x99),a
+     318   01:4E20  FB                >  ei
+     319   01:4E21  3E D0               	ld	a,0xD0
+     320   01:4E23  D3 98               	out	(0x98),a
+     321   01:4E25                      	
+     322   01:4E25                      	setvdpwvram 0x03800
+     322   01:4E25  F3                >  di
+     322   01:4E26                    >  _setvdpwvram value
+     322   01:4E26                    >  if (value & 0xFF)
+     322   01:4E26                    ~   ld a,value & 0xFF
+     322   01:4E26                    ~  else
+     322   01:4E26  AF                >   xor a
+     322   01:4E27                    >  endif
+     322   01:4E27  D3 99             >  out (0x99),a
+     322   01:4E29  3E 78             >  ld a,0x40 + (value/256)
+     322   01:4E2B  D3 99             >  out (0x99),a
+     322   01:4E2D  FB                >  ei
+     323   01:4E2E  06 20               	ld	b,32
+     324   01:4E30  3E FF               	ld	a,-1
+     325   01:4E32  D3 98               1:	out	(0x98),a
+     326   01:4E34  10 FC               	djnz 1b
+     327   01:4E36                      	
+     328   01:4E36  AF                  	xor	a
+     329   01:4E37  32 CF D5            	ld	(xmap),a
+     330   01:4E3A  3C                  	inc	a
+     331   01:4E3B  32 CE D5            	ld	(dxmap),a
+     332   01:4E3E  21 00 00            	ld	hl,0
+     333   01:4E41  22 D2 D5            	ld	(xship),hl
+     334   01:4E44                      	
+     335   01:4E44                      	;FORI=1TO6:GOSUB240:VDP(4)=I:NEXT
+     336   01:4E44                      		
+     337   01:4E44                      main_loop:	
+     338   01:4E44  76 76               [2]	halt
+     339   01:4E46                      	setVdp 4,(dxmap)	
+     339   01:4E46  F3                >  di
+     339   01:4E47                    >  _setVdp register,value
+     339   01:4E47                    >  
+     339   01:4E47  3A CE D5          >   ld a,value
+     339   01:4E4A                    >  
+     339   01:4E4A  D3 99             >  out (0x99),a
+     339   01:4E4C  3E 84             >  ld a,register + 0x80
+     339   01:4E4E  D3 99             >  out (0x99),a
+     339   01:4E50  FB                >  ei
+     340   01:4E51  CD C5 4E            	call vramupdate
+     341   01:4E54                      	
+     342   01:4E54                      	
+     343   01:4E54                      	setvdpwvram 0x0300
+     343   01:4E54  F3                >  di
+     343   01:4E55                    >  _setvdpwvram value
+     343   01:4E55                    >  if (value & 0xFF)
+     343   01:4E55                    ~   ld a,value & 0xFF
+     343   01:4E55                    ~  else
+     343   01:4E55  AF                >   xor a
+     343   01:4E56                    >  endif
+     343   01:4E56  D3 99             >  out (0x99),a
+     343   01:4E58  3E 43             >  ld a,0x40 + (value/256)
+     343   01:4E5A  D3 99             >  out (0x99),a
+     343   01:4E5C  FB                >  ei
+     344   01:4E5D  3E 58               	ld	a,96-8
+     345   01:4E5F  D3 98               	out	(0x98),a
+     346   01:4E61  3A D2 D5            	ld	a,(xship)
+     347   01:4E64  D3 98               	out	(0x98),a
+     348   01:4E66  3E 00               	ld	a,0
+     349   01:4E68  D3 98               	out	(0x98),a
+     350   01:4E6A  3E 0F               	ld	a,15
+     351   01:4E6C  D3 98               	out	(0x98),a
+     352   01:4E6E  3E D0               	ld	a,0xD0
+     353   01:4E70  D3 98               	out	(0x98),a
+     354   01:4E72                      
+     355   01:4E72                      	
+     356   01:4E72  3A CE D5            	ld	a,(dxmap)
+     357   01:4E75  3C                  	inc	a
+     358   01:4E76  FE 06               	cp	6
+     359   01:4E78  20 02               	jr	nz,2f
+     360   01:4E7A  3E 01               	ld	a,1
+     361   01:4E7C  32 CE D5            2:	ld	(dxmap),a
+     362   01:4E7F                      
+     363   01:4E7F  CD BA 30            	call	joy_read.rd_joy
+     364   01:4E82  3A D9 D5            	ld	a,(joystick)
+     365   01:4E85  CB 5F               	bit	3,a			; right 
+     366   01:4E87  C4 AE 4E            	call nz,dec_xoff
+     367   01:4E8A  3A D9 D5            	ld	a,(joystick)
+     368   01:4E8D  CB 57               	bit	2,a			; left 
+     369   01:4E8F  C4 95 4E            	call nz,inc_xoff
+     370   01:4E92                      
+     371   01:4E92  C3 44 4E            	jp main_loop
+     372   01:4E95                      inc_xoff:
+     373   01:4E95  3A D2 D5            	ld	a,(xship)
+     374   01:4E98  C6 02               	add	a,xstep
+     375   01:4E9A  FE F0               	cp 240
+     376   01:4E9C  D0                  	ret	nc
+     377   01:4E9D  32 D2 D5            	ld	(xship),a
+     378   01:4EA0  E6 0F               	and	15
+     379   01:4EA2  C0                  	ret	nz
+     380   01:4EA3  3A CF D5            	ld	a,(xmap)
+     381   01:4EA6  3C                  	inc	a
+     382   01:4EA7  FE 0A               	cp	10
+     383   01:4EA9  C8                  	ret	z
+     384   01:4EAA  32 CF D5            	ld	(xmap),a
+     385   01:4EAD  C9                  	ret
+     386   01:4EAE                      dec_xoff:
+     387   01:4EAE  3A D2 D5            	ld	a,(xship)
+     388   01:4EB1  D6 02               	sub a,xstep
+     389   01:4EB3  D8                  	ret	c
+     390   01:4EB4  32 D2 D5            	ld	(xship),a
+     391   01:4EB7  E6 0F               	and	15
+     392   01:4EB9  C0                  	ret	nz
+     393   01:4EBA  3A CF D5            	ld	a,(xmap)
+     394   01:4EBD  3D                  	dec	a
+     395   01:4EBE  FE FF               	cp	-1
+     396   01:4EC0  C8                  	ret	z
+     397   01:4EC1  32 CF D5            	ld	(xmap),a
+     398   01:4EC4  C9                  	ret
+     399   01:4EC5                      	
+     400   01:4EC5                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     401   01:4EC5                      ; FORK=0TO5:FORI=0TO3:FORJ=0TO31:VPOKEN,M+J:N=N+1:NEXT:NEXT:M=M+42:NEXT
+     402   01:4EC5                      
+     403   01:4EC5                      ;150 VDP(2)=0:VDP(5)=&H2C:VDP(6)=0:N=0:M=0
+     404   01:4EC5                      ;160 FORK=0TO5:
+     405   01:4EC5                      ;		FORI=0TO3:
+     406   01:4EC5                      ;			FORJ=0TO31:
+     407   01:4EC5                      ;				VPOKEN,M+J:N=N+1
+     408   01:4EC5                      ;			NEXT:
+     409   01:4EC5                      ;		NEXT:
+     410   01:4EC5                      ;		M=M+42:
+     411   01:4EC5                      ;	NEXT
+     412   01:4EC5                      ;170 VPOKE &H1600,&HD0:' remove sprites
+     413   01:4EC5                      
+     414   01:4EC5                      
+     415   01:4EC5                      vramupdate:
+     416   01:4EC5                      	setvdpwvram  0x0000
+     416   01:4EC5  F3                >  di
+     416   01:4EC6                    >  _setvdpwvram value
+     416   01:4EC6                    >  if (value & 0xFF)
+     416   01:4EC6                    ~   ld a,value & 0xFF
+     416   01:4EC6                    ~  else
+     416   01:4EC6  AF                >   xor a
+     416   01:4EC7                    >  endif
+     416   01:4EC7  D3 99             >  out (0x99),a
+     416   01:4EC9  3E 40             >  ld a,0x40 + (value/256)
+     416   01:4ECB  D3 99             >  out (0x99),a
+     416   01:4ECD  FB                >  ei
+     417   01:4ECE  16 06               	ld	d,6
+     418   01:4ED0  3A CF D5            	ld	a,(xmap)
+     419   01:4ED3  4F                  1:	ld	c,a
+     420   01:4ED4                      [4]	call .setline
+     420   01:4ED4  CD E7 4E CD E7 4E CD E7 4E CD E7 4E 
+     421   01:4EE0  3E 2A               	ld	a,42
+     422   01:4EE2  81                  	add	a,c
+     423   01:4EE3  15                  	dec d
+     424   01:4EE4  20 ED               	jr nz,1b
+     425   01:4EE6  C9                  	ret
+     426   01:4EE7                      	
+     427   01:4EE7                      
+     428   01:4EE7                      .setline
+     429   01:4EE7  79                  	ld	a,c
+     430   01:4EE8  06 20               	ld	b,32
+     431   01:4EEA  D3 98               1:	out	(0x98),a
+     432   01:4EEC  3C                  	inc	a
+     433   01:4EED  10 FB               	djnz 1b
+     434   01:4EEF  C9                  	ret
+     435   01:4EF0                      	
+     436   01:4EF0                      
+     437   01:4EF0  (03F4)              d0m:		incbin data0.miz
+     438   01:52E4  (03EC)              d1m:		incbin data1.miz	
+     439   01:56D0  (03E0)              d2m:		incbin data2.miz
+     440   01:5AB0  (03CC)              d3m:		incbin data3.miz
+     441   01:5E7C  (03D3)              d4m:		incbin data4.miz
+     442   01:624F  (03DB)              d5m:		incbin data5.miz
+     443   01:662A                      
+     444   01:662A                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     445   01:662A                      
+     446   01:662A                      	
+     447   01:662A  (01:FE00)           MSX_O_Mizer_buf:	equ	0xFe00	; ds	328+26 aligned at 0x100
+     448   01:662A  (01:FD09)           ram_sat:			equ	0xfd09	; ds	128
+     449   01:662A  (01:F87F)           ram_tileset:		equ	0xf87f	; ds	128*8 
+     450   01:662A  (01:FFC5)           slotvar:			equ	0xFFC5
+     451   01:662A  (01:FFC6)           slotram:			equ 0xFFC6
+     452   01:662A  (01:FFC7)           SCC:				equ	0xFFC7
+     453   01:662A  (01:FFC8)           curslot:			equ	0xFFC8
+     454   01:662A  (01:FFC9)           music_flag:			equ	0xFFC9
+     455   01:662A                      
+     456   01:662A  (C000)              	map 0xC000
+     457   01:662A  (01:C000)           meta_pnt_table_u:	#	1024
+     458   01:662A  (01:C400)           meta_pnt_table_d:	#	1024
+     459   01:662A  (01:C800)           miz_buffer:			#	3*1024
+     460   01:662A                      
+     461   01:662A  (01:D400)           level_buffer:		#	1
+     462   01:662A                      
+     463   01:662A  (01:D401)           toshiba_switch		#	1		; Toshiba
+     464   01:662A  (01:D402)           game_speed:			#	1		; game speed 1,2,3,4
+     465   01:662A  (01:D403)           victory:			#	1		
+     466   01:662A  (01:D404)           visible_sprts:		#	1
+     467   01:662A  (01:D405)           ingame:				#	1
+     468   01:662A  (01:D406)           aniframe:			#	1
+     469   01:662A  (01:D407)           old_aniframe:		#	1
+     470   01:662A                      
+     471   01:662A  (01:D408)           ms_state:			#	1
+     472   01:662A  (01:D409)           anispeed:			#	1
+     473   01:662A                      
+     474   01:662A  (01:D40A)           enable_cheat		#	1
+     475   01:662A                      
+     476   01:662A  (01:D40B)           PT3_SETUP:			#	1	;set bit0 to 1, if you want to play without looping
+     477   01:662A                      					        ;bit7 is set each time, when loop point is passed
+     478   01:662A  (01:D40C)           PT3_MODADDR:		#	2
+     479   01:662A  (01:D40E)           PT3_CrPsPtr:		#	2  ; Patter# = CrPsPtr-song_buffer-101;
+     480   01:662A  (01:D410)           PT3_SAMPTRS:		#	2
+     481   01:662A  (01:D412)           PT3_OrnPtrs:		#	2
+     482   01:662A  (01:D414)           PT3_PDSP:			#	2
+     483   01:662A  (01:D416)           PT3_CSP:			#	2
+     484   01:662A  (01:D418)           PT3_PSP:			#	2
+     485   01:662A  (01:D41A)           PT3_PrNote:			#	1
+     486   01:662A  (01:D41B)           PT3_PrSlide:		#	2
+     487   01:662A  (01:D41D)           PT3_AdInPtA:		#	2
+     488   01:662A  (01:D41F)           PT3_AdInPtB:		#	2
+     489   01:662A  (01:D421)           PT3_AdInPtC:		#	2
+     490   01:662A  (01:D423)           PT3_LPosPtr:		#	2
+     491   01:662A  (01:D425)           PT3_PatsPtr:		#	2
+     492   01:662A  (01:D427)           PT3_Delay:			#	1
+     493   01:662A  (01:D428)           PT3_AddToEn:		#	1
+     494   01:662A  (01:D429)           PT3_Env_Del:		#	1
+     495   01:662A  (01:D42A)           PT3_ESldAdd:		#	2
+     496   01:662A                      
+     497   01:662A  (01:D42C)           VARS: 				#	0
+     498   01:662A  (01:D42C)           ChanA:				#	30			;CHNPRM_Size
+     499   01:662A  (01:D44A)           ChanB:				#	30			;CHNPRM_Size
+     500   01:662A  (01:D468)           ChanC:				#	30			;CHNPRM_Size
+     501   01:662A                      
+     502   01:662A                      ;GlobalVars
+     503   01:662A  (01:D486)           DelyCnt:			#	1
+     504   01:662A  (01:D487)           CurESld:			#	2
+     505   01:662A  (01:D489)           CurEDel:			#	1
+     506   01:662A                      
+     507   01:662A                      Ns_Base_AddToNs:	
+     508   01:662A  (01:D48A)           Ns_Base:			#	1
+     509   01:662A  (01:D48B)           AddToNs:			#	1
+     510   01:662A                      
+     511   01:662A  (01:D48C)           AYREGS:     		#	0
+     512   01:662A  (01:D48C)           VT_:				#	14
+     513   01:662A  (01:D49A)           EnvBase:			#	2
+     514   01:662A  (01:D49C)           VAR0END:			#	240
+     515   01:662A                      
+     516   01:662A                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     517   01:662A                      ; Helper variables from PT3 mobule
+     518   01:662A                      ; scc patch
+     519   01:662A                      
+     520   01:662A  (01:D58C)           _psg_vol_fix:		#	1
+     521   01:662A  (01:D58D)           _sfx_vol_fix:		#	1
+     522   01:662A  (01:D58E)           _scc_vol_fix:		#	1
+     523   01:662A                      
+     524   01:662A  (01:D58F)           fade_psg_vol_fix:	#	1
+     525   01:662A  (01:D590)           fade_scc_vol_fix:	#	1
+     526   01:662A                      
+     527   01:662A  (01:D591)           _psg_vol_balance:	#	2
+     528   01:662A  (01:D593)           _scc_vol_balance:	#	2
+     529   01:662A                      
+     530   01:662A  (01:D595)           AYREGS_CPY:			#	13
+     531   01:662A                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     532   01:662A  (01:D5A2)           wchA:				#	1	; wave on channel A
+     533   01:662A  (01:D5A3)           wchB:				#	1	; wave on channel B
+     534   01:662A  (01:D5A4)           wchC:				#	1	; wave on channel C
+     535   01:662A                      ; pt3 samples previously detected (times 2)
+     536   01:662A  (01:D5A5)           OSmplA          	#	1
+     537   01:662A  (01:D5A6)           OSmplB          	#	1
+     538   01:662A  (01:D5A7)           OSmplC          	#	1
+     539   01:662A                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     540   01:662A  (01:D5A8)           _waves				#	16
+     541   01:662A                      
+     542   01:662A  (01:D5B8)           reverse_sat:		#	1
+     543   01:662A                      
+     544   01:662A                      
+     545   01:662A                      		; --- THIS FILE MUST BE COMPILED IN RAM ---
+     546   01:662A                      
+     547   01:662A                      		; --- PT3 WORKAREA [self-modifying code patched] ---
+     548   01:662A                      
+     549   01:662A                          ; global _ayFX_PRIORITY
+     550   01:662A  (01:D5B9)           ayFX_PRIORITY:		#	1			; Current ayFX stream priority
+     551   01:662A                      
+     552   01:662A                      		; --- THIS FILE MUST BE COMPILED IN RAM ---
+     553   01:662A                      
+     554   01:662A  (01:D5BA)           ayFX_PLAYING:	#	1			; There's an ayFX stream to be played?
+     555   01:662A  (01:D5BB)           ayFX_CURRENT:	#	1			; Current ayFX stream playing
+     556   01:662A  (01:D5BC)           ayFX_POINTER:	#	2			; Pointer to the current ayFX stream
+     557   01:662A  (01:D5BE)           ayFX_TONE:	    #	2			; Current tone of the ayFX stream
+     558   01:662A  (01:D5C0)           ayFX_NOISE: 	#	1			; Current noise of the ayFX stream
+     559   01:662A  (01:D5C1)           ayFX_VOLUME:	#	1			; Current volume of the ayFX stream
+     560   01:662A  (01:D5C2)           ayFX_CHANNEL:	#	1			; PSG channel to play the ayFX stream
+     561   01:662A  (01:D5C3)           ayFX_VT:		#	2			; ayFX relative volume table pointer
+     562   01:662A                      
+     563   01:662A                      
+     564   01:662A                      
+     565   01:662A                      				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     566   01:662A                      
+     567   01:662A  (01:D5C5)           vsf:         		#	1          ; 0 if 50Hz, !0 if 60Hz
+     568   01:662A  (01:D5C6)           cnt:         		#	1          ; counter to compensate NTSC machines
+     569   01:662A  (01:D5C7)           ayend:				#	0
+     570   01:662A  (01:D5C7)           randSeed:			#	2
+     571   01:662A                      
+     572   01:662A  (01:D5C9)           assault_wave_timer:	# 	2
+     573   01:662A  (01:D5CB)           wave_count:			#	1
+     574   01:662A  (01:D5CC)           landing_permission:	#	1
+     575   01:662A  (01:D5CD)           bullet_rate:		#	1
+     576   01:662A  (01:D5CE)           dxmap:				#	1
+     577   01:662A  (01:D5CF)           xmap:				#	2
+     578   01:662A  (01:D5D1)           yship:				#	1
+     579   01:662A  (01:D5D2)           xship:				#	2
+     580   01:662A  (01:D5D4)           cur_level:			#	1
+     581   01:662A  (01:D5D5)           next_level:			#	1
+     582   01:662A  (01:D5D6)           sprite_3c:			#	1
+     583   01:662A  (01:D5D7)           clr_table			#	2
+     584   01:662A  (01:D5D9)           joystick:			#	1
+     585   01:662A  (01:D5DA)           old_joystick:		#	1
+     586   01:662A  (01:D5DB)           chang_joystick:		#	1
+     587   01:662A  (01:D5DC)           menu_item:			#	1
+     588   01:662A  (01:D5DD)           already_dead:		#	1	; set after you die, reset at level start 
+     589   01:662A                      
+     590   01:662A  (01:D5DE)           god_mode			#	1
+     591   01:662A  (01:D5DF)           halt_game:			#	1
+     592   01:662A  (01:D5E0)           menu_level:			#	0
+     593   01:662A  (01:D5E0)           halt_gamef1:		#	1
+     594   01:662A  (01:D5E1)           lives:				#	3
+     595   01:662A  (01:D5E4)           dummy_:				#	4
+     596   01:662A  (01:D5E8)           score:				#	7
+     597   01:662A  (01:D5EF)           score_bin:			#	4
+     598   01:662A  (01:D5F3)           lives_bin:			#	1	; BCD !!!
+     599   01:662A                      
+     600   01:662A  (01:D5F4)           toggle_scc			#	1
+     601   01:662A  (01:D5F5)           save_SCC			#	1
+     602   01:662A                      	
+     603   01:662A                      	struct enemy_data
+     604   01:662A                    < y				db	0
+     605   01:662A                    < x				dw	0
+     606   01:662A                    < xoff			db	0
+     607   01:662A                    < yoff			db	0
+     608   01:662A                    < xsize			db	0
+     609   01:662A                    < ysize			db	0
+     610   01:662A                    < status			db	0	; B7 == DWN/UP | B6 == RIGHT/LEFT | B0 == Inactive/Active
+     611   01:662A                    < cntr			db	0
+     612   01:662A                    < kind			db	0
+     613   01:662A                    < frame			db	0
+     614   01:662A                    < color			db	0
+     615   01:662A                    < speed			dw	0
+     616   01:662A                    < 	ends
+     617   01:662A                      	
+     618   01:662A  (01:0001)           max_enem 			equ	1
+     619   01:662A  (01:0001)           max_bullets			equ 1
+     620   01:662A  (01:0001)           max_enem_bullets 	equ 1
+     621   01:662A                      
+     622   01:662A                      ; [max_enem]			enemy_data
+     623   01:662A                      ; [max_bullets]		enemy_data
+     624   01:662A                      ; [max_enem_bullets]	enemy_data
+     625   01:662A                      
+     626   01:662A  (01:D5F6)           enemies:		#	enemy_data*max_enem
+     627   01:662A  (01:D604)           ms_bullets:		#	enemy_data*max_bullets
+     628   01:662A  (01:D612)           enem_bullets:	#	enemy_data*max_enem_bullets
+     629   01:662A                      
+     630   01:662A                      	
+     631   01:662A  (0000)              	endmap
+     632   01:662A                      	
+
+    LABELS
+-------------------------------------------------
+00:0000F3DF   _vdpReg
+00:0000F3AE X LINL40
+00:0000FC9E X JIFFY
+00:00000024   enaslt
+00:0000FCC1   exptbl
+00:0000FCC5   slttbl
+00:00003152   checkkbd
+00:00000024 X write_256
+00:0000313C X enascr
+00:00003143 X disscr
+00:0000315D X setwrtvram
+00:00000000   write_2k
+00:00000038 X isr
+00:0000FE00   mom_map_bits_rom
+00:0000FF48   mom_offset_table
+00:0000004C   mom_depack_rom
+00:00000062   mom_init_bits_rom
+00:0000006B   mom_node_rom
+00:0000007E   mom_set_bit_rom
+00:0000008B   mom_wait_step_rom
+00:00000093   mom_lit_copy_rom
+00:00000095   mom_main_loop_rom
+00:0000009C   mom_get_index_rom
+00:000000B7   mom_out_range_rom
+00:000000BA   mom_go_for_it_rom
+00:000000D1   mom_get_pair_rom
+00:000000E3   mom_get_bits_rom
+00:000000E6   mom_getting_bits_rom
+00:000000F2   mom_get_bit_rom
+00:000000FA   mom_byte_done_rom
+00:000000FD   d0
+00:000008E4   d1
+00:000010CB   d2
+00:000018B2   d3
+00:00002099   d4
+00:00002880   d5
+00:00003067   vraminit
+00:0000309E X joy_read
+00:000030BA   joy_read.rd_joy
+00:000030C8 X joy_read.rd_key
+00:00003112 X joy_read.z_or_space
+00:00003118 X joy_read.x_and_up
+00:0000311E X joy_read.up
+00:00003124 X joy_read.x_and_dwn
+00:0000312A X joy_read.dwn
+00:00003130 X joy_read.left
+00:00003136 X joy_read.right
+00:00000002   xstep
+01:00004000 X rom_header
+01:00000024 X ENASLT
+01:00000138   RSLREG
+01:0000FCC1   EXPTBL
+01:00004017   search_slot
+01:00004036   search_slotram
+01:00004057   search_slotram0
+01:0000405C   setrompage0
+01:00004062   setrompage2
+01:00004068   setrampage2
+01:0000406E   setrompage3
+01:00004074 X setrampage3
+01:0000407A X recbios
+01:0000407D   setslotpage0
+01:000040B4 X setslotpage1
+01:000040F3   setslotpage2
+01:0000413A   setslotpage3
+01:00000000   CHNPRM_PsInOr
+01:00000001   CHNPRM_PsInSm
+01:00000002   CHNPRM_CrAmSl
+01:00000003   CHNPRM_CrNsSl
+01:00000004   CHNPRM_CrEnSl
+01:00000005   CHNPRM_TSlCnt
+01:00000006   CHNPRM_CrTnSl
+01:00000008   CHNPRM_TnAcc
+01:0000000A   CHNPRM_COnOff
+01:0000000B   CHNPRM_OnOffD
+01:0000000C   CHNPRM_OffOnD
+01:0000000D   CHNPRM_OrnPtr
+01:0000000F   CHNPRM_SamPtr
+01:00000011   CHNPRM_NNtSkp
+01:00000012   CHNPRM_Note
+01:00000013   CHNPRM_SlToNt
+01:00000014   CHNPRM_Env_En
+01:00000015   CHNPRM_Flags
+01:00000016   CHNPRM_TnSlDl
+01:00000017   CHNPRM_TSlStp
+01:00000019   CHNPRM_TnDelt
+01:0000001B   CHNPRM_NtSkCn
+01:0000001C   CHNPRM_Volume
+01:0000001D   nsample
+01:0000001E X CHNPRM_Size
+01:00000000   AR_TonA
+01:00000002   AR_TonB
+01:00000004   AR_TonC
+01:00000006   AR_Noise
+01:00000007   AR_Mixer
+01:00000008   AR_AmplA
+01:00000009   AR_AmplB
+01:0000000A   AR_AmplC
+01:0000000B   AR_Env
+01:0000000D   AR_EnvTp
+01:00004179   CHECKLP
+01:0000418A X PT3_MUTE
+01:000041BC X PT3_INIT
+01:000041CE   mute_entry
+01:00004212   _INITV1
+01:0000421A   _INITV2
+01:0000422E   _INITV3
+01:00004267   PD_OrSm
+01:00004271   PD_SAM
+01:00004272   PD_SAM_
+01:0000428B   PD_VOL
+01:00004294   PD_EOff
+01:0000429C   PD_SorE
+01:000042A6   PD_ENV
+01:000042AB   PD_ORN
+01:000042B0   PD_ESAM
+01:000042BD   PTDECOD
+01:000042CC   PD_LOOP
+01:000042CF   PD_LP2
+01:000042FC   PD_NOIS
+01:00004301   PD_REL
+01:00004307   PD_NOTE
+01:0000430F   PD_RES
+01:00004321   PD_FIN
+01:00004328   C_PORTM
+01:00004373   _NOSIG
+01:0000437D   SET_STP
+01:00004389   C_GLISS
+01:0000439C   C_SMPOS
+01:000043A2   C_ORPOS
+01:000043A8   C_VIBRT
+01:000043C0   C_ENGLS
+01:000043D2   C_DELAY
+01:000043D8   SETENV
+01:000043F3   C_NOP
+01:000043F4   SETORN
+01:0000440D   SPCCOMS
+01:0000442D   CHREGS
+01:00004450   _CH_ORPS
+01:0000445B   _CH_NTP
+01:00004461   _CH_NOK
+01:0000447C   _CH_SMPS
+01:00004492   _CH_NOAC
+01:000044D9   _CH_STPP
+01:000044EE   _CH_AMP
+01:00004500   _CH_AMIN
+01:00004505   _CH_SVAM
+01:00004508   _CH_NOAM
+01:00004511   _CH_APOS
+01:00004517   _CH_VOL
+01:00004522 X _CH_ENV
+01:00004529   _CH_NOEN
+01:00004543   _NO_ENAC
+01:0000454A   _NO_ENSL
+01:00004558   _CH_MIX
+01:0000455C   _CH_EXIT
+01:0000457B   _CH_ONDL
+01:0000457F   PT3_PLAY
+01:000045B3   _PLNLP
+01:000045DA   _PL1A
+01:000045E5   _PL1B
+01:000045FA   _PL1C
+01:0000460F   _PL1D
+01:00004615   _PL2
+01:00004677   EMPTYSAMORN
+01:0000467B   NT_
+01:00000014 X n_sfx
+01:00004800   sfx_prio
+01:0000C800   ayFX_STREAMS
+01:00004815 X ayFX_SETUP
+01:00004823   ayFX_END
+01:00004829 X ayFX_INIT
+01:00004869   _INIT_END
+01:0000486D   _INIT_NOSOUND
+01:00004875   ayFX_FRAME
+01:00004875 X ayFX_PLAY
+01:0000488C   _CHECK_NN
+01:0000489B   _SETPOINTER
+01:000048B9   _SETMASKS
+01:000048CE   _SETCHAN
+01:000048D0 X _CHK1
+01:000048D2 X _PLAY_C
+01:000048E2   _CHK2
+01:000048E8 X _PLAY_B
+01:000048F8   _CHK3
+01:000048FC X _PLAY_A
+01:0000490C   _SETMIXER
+01:00005000 X Bank1
+01:00007000 X Bank2
+01:00009000   Bank3
+01:0000B000 X Bank4
+01:00004919 X _SCC_PSG_Volume_balance
+01:00004946   no_music
+01:00004960 X Audio_Internal_code
+01:000049C0   PT3_ROUT
+01:000049CD   _LOUT
+01:000049D9   _WAVESSCC
+01:00009880   SCC_REG
+01:00004BD9   SCCROUT
+01:00004C0D   probewavechanges
+01:00004C2E   changeA
+01:00004C3B   changeB
+01:00004C48   changeC
+01:00004C59 X sccchan
+01:00004C6C   samp2wav
+01:00004C79   en_scc
+01:00004C95   en_slot
+01:00004C9B   begin
+01:00004CBA   scctest
+01:00004CBE   testslot
+01:00004CD3   testreg
+01:00004CEA   nextslot
+01:00004CFA   nextprim
+01:00004D0C   noscc
+01:00004D0E   done
+01:00004D18   end
+01:00004D18 X SCCINIT
+01:00004D2B   mus_mute
+01:00004DAF   initmain
+01:00004062 X enpage2
+01:00004068 X enpage3
+01:00004E44   main_loop
+01:00004E95   inc_xoff
+01:00004EAE   dec_xoff
+01:00004EC5   vramupdate
+01:00004EE7   vramupdate.setline
+01:00004EF0 X d0m
+01:000052E4 X d1m
+01:000056D0 X d2m
+01:00005AB0 X d3m
+01:00005E7C X d4m
+01:0000624F X d5m
+01:0000FE00   MSX_O_Mizer_buf
+01:0000FD09 X ram_sat
+01:0000F87F X ram_tileset
+01:0000FFC5   slotvar
+01:0000FFC6   slotram
+01:0000FFC7   SCC
+01:0000FFC8   curslot
+01:0000FFC9   music_flag
+01:0000C000 X meta_pnt_table_u
+01:0000C400 X meta_pnt_table_d
+01:0000C800   miz_buffer
+01:0000D400 X level_buffer
+01:0000D401 X toshiba_switch
+01:0000D402 X game_speed
+01:0000D403 X victory
+01:0000D404 X visible_sprts
+01:0000D405 X ingame
+01:0000D406 X aniframe
+01:0000D407 X old_aniframe
+01:0000D408 X ms_state
+01:0000D409 X anispeed
+01:0000D40A X enable_cheat
+01:0000D40B   PT3_SETUP
+01:0000D40C   PT3_MODADDR
+01:0000D40E   PT3_CrPsPtr
+01:0000D410   PT3_SAMPTRS
+01:0000D412   PT3_OrnPtrs
+01:0000D414   PT3_PDSP
+01:0000D416   PT3_CSP
+01:0000D418   PT3_PSP
+01:0000D41A   PT3_PrNote
+01:0000D41B   PT3_PrSlide
+01:0000D41D   PT3_AdInPtA
+01:0000D41F   PT3_AdInPtB
+01:0000D421   PT3_AdInPtC
+01:0000D423   PT3_LPosPtr
+01:0000D425   PT3_PatsPtr
+01:0000D427   PT3_Delay
+01:0000D428   PT3_AddToEn
+01:0000D429   PT3_Env_Del
+01:0000D42A   PT3_ESldAdd
+01:0000D42C   VARS
+01:0000D42C   ChanA
+01:0000D44A   ChanB
+01:0000D468   ChanC
+01:0000D486   DelyCnt
+01:0000D487   CurESld
+01:0000D489   CurEDel
+01:0000662A   Ns_Base_AddToNs
+01:0000D48A   Ns_Base
+01:0000D48B   AddToNs
+01:0000D48C   AYREGS
+01:0000D48C   VT_
+01:0000D49A   EnvBase
+01:0000D49C   VAR0END
+01:0000D58C   _psg_vol_fix
+01:0000D58D   _sfx_vol_fix
+01:0000D58E   _scc_vol_fix
+01:0000D58F X fade_psg_vol_fix
+01:0000D590 X fade_scc_vol_fix
+01:0000D591   _psg_vol_balance
+01:0000D593   _scc_vol_balance
+01:0000D595   AYREGS_CPY
+01:0000D5A2   wchA
+01:0000D5A3   wchB
+01:0000D5A4   wchC
+01:0000D5A5   OSmplA
+01:0000D5A6 X OSmplB
+01:0000D5A7 X OSmplC
+01:0000D5A8   _waves
+01:0000D5B8 X reverse_sat
+01:0000D5B9   ayFX_PRIORITY
+01:0000D5BA X ayFX_PLAYING
+01:0000D5BB X ayFX_CURRENT
+01:0000D5BC   ayFX_POINTER
+01:0000D5BE   ayFX_TONE
+01:0000D5C0   ayFX_NOISE
+01:0000D5C1   ayFX_VOLUME
+01:0000D5C2   ayFX_CHANNEL
+01:0000D5C3   ayFX_VT
+01:0000D5C5 X vsf
+01:0000D5C6 X cnt
+01:0000D5C7 X ayend
+01:0000D5C7 X randSeed
+01:0000D5C9 X assault_wave_timer
+01:0000D5CB X wave_count
+01:0000D5CC X landing_permission
+01:0000D5CD X bullet_rate
+01:0000D5CE   dxmap
+01:0000D5CF   xmap
+01:0000D5D1 X yship
+01:0000D5D2   xship
+01:0000D5D4 X cur_level
+01:0000D5D5 X next_level
+01:0000D5D6 X sprite_3c
+01:0000D5D7 X clr_table
+01:0000D5D9   joystick
+01:0000D5DA   old_joystick
+01:0000D5DB   chang_joystick
+01:0000D5DC X menu_item
+01:0000D5DD X already_dead
+01:0000D5DE X god_mode
+01:0000D5DF X halt_game
+01:0000D5E0 X menu_level
+01:0000D5E0 X halt_gamef1
+01:0000D5E1 X lives
+01:0000D5E4 X dummy_
+01:0000D5E8 X score
+01:0000D5EF X score_bin
+01:0000D5F3 X lives_bin
+01:0000D5F4 X toggle_scc
+01:0000D5F5 X save_SCC
+00:00000000 X enemy_data.y
+00:00000001 X enemy_data.x
+00:00000003 X enemy_data.xoff
+00:00000004 X enemy_data.yoff
+00:00000005 X enemy_data.xsize
+00:00000006 X enemy_data.ysize
+00:00000007 X enemy_data.status
+00:00000008 X enemy_data.cntr
+00:00000009 X enemy_data.kind
+00:0000000A X enemy_data.frame
+00:0000000B X enemy_data.color
+00:0000000C X enemy_data.speed
+00:0000000E   enemy_data
+01:00000001   max_enem
+01:00000001   max_bullets
+01:00000001   max_enem_bullets
+01:0000D5F6 X enemies
+01:0000D604 X ms_bullets
+01:0000D612 X enem_bullets
+
+
+ Output: main.out
+-------------------------------------------------
+
+ Page: 00
+  Org: 00000000  Size: *  Used: 00000000
+
+    No output
+
+ Output: stardust64.rom
+-------------------------------------------------
+
+ Page: 00
+  Org: 00000000  Size: 00004000  Used: 00003167
+
+   Address   Length Align   Label
+   00000000      36         write_2k
+   00000024      20         write_256
+   00000038   12548     @   isr
+   0000313C      22         enascr
+   00003152      11         checkkbd
+   0000315D      10         setwrtvram
+   00003167    3737       <empty>
+
+ Page: 01
+  Org: 00004000  Size: 00004000  Used: 0000262A
+
+   Address   Length Align   Label
+   00004000    9770     @   rom_header
+   0000662A    6614       <empty>
+
+ Page: 02
+  Org: 00008000  Size: 00004000  Used: 00000000
+
+   00008000   16384       <empty>
+
+ Page: 03
+  Org: 00008000  Size: 00004000  Used: 00000000
+
+   00008000   16384       <empty>

@@ -1,0 +1,4 @@
+Sjasm v0.42b8 - www.xl2s.tk
+PT3-ROM.ASM line 108: Label not found: music_miz_buffer
+PT3-ROM.ASM line 110: Label not found: music_miz_buffer
+AYFX-ROM.ASM line 19: Label not found: sfxBank_miz
